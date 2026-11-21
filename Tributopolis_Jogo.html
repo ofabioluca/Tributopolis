@@ -1,0 +1,1499 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Tributópolis — Jogo</title>
+<style>
+/* Layout: landscape board (57x41 cm proportions, 44 squares) on top, controls under it, then players + event log. */
+:root{
+  --bg:#E8F0F7; --surface:#FFFFFF; --surface-2:#EEF3F8; --fg:#1E3A5F; --muted:#5A6878;
+  --line:#D3DDE7; --accent:#3A6EBA; --accent-ink:#1E3A5F; --on-accent:#FFFFFF; --gold:#E0752F; --bad:#B4453A; --good:#2F8A3C;
+  --plaque:#D4E5F3; color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1B2B; --surface:#172638; --surface-2:#1E3046; --fg:#E8EFF7; --muted:#9FB0C2;
+    --line:#2B3F56; --accent:#7FA8E6; --accent-ink:#B9D0F2; --on-accent:#0B1B33; --gold:#F0A066; --bad:#E58A7E; --good:#7CCB8A;
+    --plaque:#1B3345; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1B2B; --surface:#172638; --surface-2:#1E3046; --fg:#E8EFF7; --muted:#9FB0C2;
+    --line:#2B3F56; --accent:#7FA8E6; --accent-ink:#B9D0F2; --on-accent:#0B1B33; --gold:#F0A066; --bad:#E58A7E; --good:#7CCB8A;
+    --plaque:#1B3345; color-scheme: dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:'Poppins',Arial,sans-serif;margin:0;
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));}
+h1,h2,h3{font-family:'Poppins',Arial,sans-serif;margin:0}
+button{font-family:inherit;cursor:pointer}
+.app{max-width:1500px;margin:0 auto;padding-block:28px 48px}
+.topbar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .eyebrow{font-weight:700;font-size:12px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin:0}
+.brand h1{font-size:30px;font-weight:800}
+.subline{color:var(--muted);font-size:14px;max-width:520px;margin:0}
+
+.setup-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px;max-width:640px;margin:40px auto;display:flex;flex-direction:column;gap:20px}
+.setup-card h2{font-size:24px}
+.player-row{display:flex;gap:10px;align-items:center}
+.player-row input{flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:15px}
+.swatch{width:26px;height:26px;border-radius:50%;flex-shrink:0;border:2px solid var(--surface)}
+.count-row{display:flex;gap:8px}
+.count-row button{padding:10px 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-weight:700}
+.count-row button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.primary-btn{background:var(--accent);color:var(--on-accent);border:none;border-radius:12px;padding:14px 20px;font-weight:800;font-size:16px}
+.rules-box{background:var(--surface-2);border-radius:14px;padding:16px 18px;font-size:13px;color:var(--muted);line-height:1.6}
+
+.game-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:18px;align-items:start}
+.game-grid > .board-wrap{grid-column:1/-1}
+@media (max-width:820px){.game-grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.panel h3{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+
+.player-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;flex-direction:column;gap:4px}
+.player-card.active{border-color:var(--accent);background:var(--surface-2)}
+.player-card .pname{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.player-card .pmoney{font-variant-numeric:tabular-nums;font-size:19px;font-weight:800;color:var(--good)}
+.player-card .ptags{display:flex;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.tag{background:var(--surface-2);border-radius:999px;padding:2px 8px}
+.tag.warn{color:var(--bad)}
+.player-card .pactions{display:flex;gap:6px;margin-top:4px}
+.mini-btn{flex:1;font-size:11px;font-weight:700;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+.mini-btn:hover{border-color:var(--accent)}
+.item-row{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px}
+.item-row .meta{color:var(--muted);font-size:12px}
+.empty-note{color:var(--muted);font-size:13px;font-style:italic}
+.caixa-row{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;border-bottom:1px solid var(--line)}
+.caixa-row:last-child{border-bottom:none}
+.caixa-row b{font-variant-numeric:tabular-nums}
+
+.board-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+/* 1 board unit (u) = 1/152 of the board width; corners 16u, side squares 10u x 16u */
+.board{position:relative;width:100%;aspect-ratio:152/108;container:board/inline-size;--u:calc(100cqw/152);
+  background:#D4E5F3;border-radius:6px;overflow:hidden;box-shadow:0 12px 32px rgba(20,45,80,.22);
+  font-family:'Poppins',Arial,sans-serif;color:#22303F;color-scheme:light}
+.sq{position:absolute;background:#F6F4EE;border:0;padding:0;margin:0;cursor:pointer;overflow:hidden;font-family:inherit;color:inherit;
+  font-size:calc(var(--u)*.9);line-height:1.15;text-align:center}
+.sq::after{content:"";position:absolute;inset:0;border:1px solid rgba(40,60,85,.3);pointer-events:none}
+.sq.owned::after{border:calc(var(--u)*.5) solid var(--own)}
+.sq.current-square::after{border:calc(var(--u)*.6) solid #F5B323;box-shadow:inset 0 0 calc(var(--u)*1.5) rgba(245,179,35,.6)}
+.sq:focus-visible{outline:none}
+.sq:focus-visible::after{border:calc(var(--u)*.5) solid #1E3A5F}
+.sq:hover .card,.sq:hover .corner-in{filter:brightness(.96)}
+.card{position:absolute;left:50%;top:50%;display:flex;flex-direction:column;background:#F6F4EE}
+.s-bottom .card,.s-top .card{width:calc(var(--u)*10);height:calc(var(--u)*16)}
+.s-left .card,.s-right .card{width:calc(var(--u)*9.5);height:calc(var(--u)*16)}
+.s-bottom .card{transform:translate(-50%,-50%)}
+.s-top .card{transform:translate(-50%,-50%) rotate(180deg)}
+.s-left .card{transform:translate(-50%,-50%) rotate(90deg)}
+.s-right .card{transform:translate(-50%,-50%) rotate(-90deg)}
+.band{background:var(--band);color:#fff;padding:.4em .2em .35em;line-height:1.1;flex:0 0 auto}
+.band b{display:block;font-weight:800;font-size:1.02em;letter-spacing:.04em;text-transform:uppercase}
+.band small{display:block;font-size:.7em;font-weight:500;opacity:.92}
+.card .main{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;gap:.4em;padding:.55em .35em .4em}
+.nm{font-weight:800;color:var(--ink);font-size:1em;line-height:1.12;overflow-wrap:break-word;max-width:100%}
+.icn{width:2.5em;height:2.5em;color:var(--ink);flex:0 0 auto}
+.desc{font-size:.72em;line-height:1.3;color:#2B3440;font-weight:500}
+.corner{background:var(--band)}
+.corner-in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45em;padding:1em .9em;color:#fff}
+.cicn{width:4.6em;height:4.6em;color:#fff}
+.clbl{font-weight:800;font-size:1.65em;letter-spacing:.03em;line-height:1}
+.cdesc{font-size:.76em;line-height:1.3;font-weight:500;opacity:.95}
+.owner-flag{position:absolute;top:calc(var(--u)*.9);right:calc(var(--u)*.9);width:calc(var(--u)*1.6);height:calc(var(--u)*1.6);min-width:7px;min-height:7px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.4);z-index:3}
+
+/* center of the board */
+.center{position:absolute;left:calc(16/152*100%);top:calc(16/108*100%);width:calc(120/152*100%);height:calc(76/108*100%);background:#D4E5F3;overflow:hidden;color:#1E3A5F}
+.center > *{position:absolute}
+.deck{border-radius:calc(var(--u)*1.2);background:var(--c);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*.4);
+  font-weight:800;font-size:calc(var(--u)*1.2);letter-spacing:.03em;box-shadow:0 calc(var(--u)*.55) 0 rgba(20,40,70,.22)}
+.deck::before{content:"";position:absolute;inset:calc(var(--u)*.55);border:calc(var(--u)*.18) dashed rgba(255,255,255,.8);border-radius:calc(var(--u)*.8);pointer-events:none}
+.deck .dic{width:calc(var(--u)*3.6);height:calc(var(--u)*3.6);border-radius:50%;background:#fff;color:var(--c);display:flex;align-items:center;justify-content:center}
+.deck .dic svg{width:62%;height:62%}
+.deck small{font-size:.68em;font-weight:600;opacity:.95}
+.plq-title{left:0;width:100%;text-align:center;margin:0;font-family:'Poppins',Arial,sans-serif;font-weight:900;font-size:calc(var(--u)*9.2);line-height:1;letter-spacing:.01em;
+  color:#2D5693;-webkit-text-stroke:calc(var(--u)*.28) #13284A;paint-order:stroke fill;
+  text-shadow:calc(var(--u)*.25) calc(var(--u)*.25) 0 #13284A,calc(var(--u)*.5) calc(var(--u)*.5) 0 #13284A,calc(var(--u)*.75) calc(var(--u)*.75) 0 #13284A}
+.plq-pill{background:#C9457E;color:#fff;border-radius:99px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:calc(var(--u)*1.05);letter-spacing:.03em;text-transform:uppercase;text-align:center}
+.tax{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.4)}
+.tax .circ{width:calc(var(--u)*6.6);height:calc(var(--u)*6.6);border-radius:50%;background:#fff;border:calc(var(--u)*.55) solid var(--c);color:var(--c);display:flex;align-items:center;justify-content:center}
+.tax .circ svg{width:55%;height:55%}
+.tax b{background:var(--c);color:#fff;border-radius:99px;padding:.05em 1.1em;font-size:calc(var(--u)*1.1);margin-top:calc(var(--u)*-1.2)}
+.tax small{font-size:calc(var(--u)*.85);font-weight:700;white-space:nowrap}
+.legend-box{font-size:calc(var(--u)*.95)}
+.legend-box h4{margin:0 0 .5em;font-weight:800;font-size:1.05em;letter-spacing:.04em}
+.legend{display:grid;grid-template-columns:repeat(4,auto);gap:.35em 1.1em;font-weight:500;justify-content:start}
+.legend i{display:inline-block;width:1.6em;height:.85em;border-radius:.2em;margin-right:.4em;vertical-align:-.1em}
+.legend-note{margin:.6em 0 0;font-size:.88em;line-height:1.35;color:#2B3440}
+.sky{left:0;width:100%;display:flex;align-items:flex-end;gap:calc(var(--u)*.35);padding:0 calc(var(--u)*.6)}
+.sky i{flex:1;background:#A9C9E6;border-radius:calc(var(--u)*.2) calc(var(--u)*.2) 0 0}
+.ground{left:0;width:100%;background:#7FAE6B}
+.cxb{border:calc(var(--u)*.3) solid var(--c);border-radius:calc(var(--u)*1);background:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 calc(var(--u)*.4) calc(var(--u)*1) rgba(20,40,70,.15)}
+.cxb .h{background:var(--c);color:#fff;font-weight:800;font-size:calc(var(--u)*1.2);letter-spacing:.03em;padding:calc(var(--u)*.55) 0;text-align:center}
+.cxb .b{flex:1;margin:calc(var(--u)*1.1);border:calc(var(--u)*.16) dashed var(--c);border-radius:calc(var(--u)*.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*.3);color:var(--c);text-align:center;padding:0 calc(var(--u)*.6)}
+.cxb .b svg{width:calc(var(--u)*2.6);height:calc(var(--u)*2.6)}
+.cxb .val{font-size:calc(var(--u)*1.9);font-weight:800;font-variant-numeric:tabular-nums;color:#1E3A5F;line-height:1}
+.cxb small{font-size:calc(var(--u)*.85);font-weight:700;line-height:1.2}
+.mission{left:0;width:100%;text-align:center;margin:0;font-weight:800;font-size:calc(var(--u)*1.1);letter-spacing:.06em}
+.tokens-layer{position:absolute;inset:0;pointer-events:none;z-index:5}
+.token{position:absolute;width:max(10px,calc(var(--u)*2.6));height:max(10px,calc(var(--u)*2.6));border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.55);transition:left .42s ease, top .42s ease;transform:translate(-50%,-50%)}
+
+/* smaller boards: drop the fine print, keep names and icons; tap a square to read it */
+@container board (max-width:1000px){
+  .sq .desc,.cdesc,.legend-note{display:none}
+  .nm{font-size:1.3em}.icn{width:3.6em;height:3.6em}
+  .clbl{font-size:2.1em}.cicn{width:6em;height:6em}
+}
+@container board (max-width:620px){
+  .nm,.band small,.band b,.legend-box,.tax small{display:none}
+  .band{padding:.9em 0}.card .main{justify-content:center}.icn{width:6em;height:6em}
+  .clbl{font-size:1.75em}.cicn{width:7em;height:7em}
+  .cxb small,.deck small{display:none}.cxb .val{font-size:calc(var(--u)*2.8)}
+}
+
+.controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center}
+.controls{width:100%}
+.turn-banner{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;margin:0}
+.die{width:64px;height:64px;border-radius:16px;background:var(--surface);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;color:var(--fg)}
+.die.rolling{animation:dieRoll .09s linear infinite}
+@keyframes dieRoll{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(8deg) scale(1.05)}100%{transform:rotate(-8deg) scale(1)}}
+.roll-btn{background:var(--accent);color:var(--on-accent);border:none;border-radius:12px;padding:14px 24px;font-weight:800;font-size:15px}
+.roll-btn:disabled{opacity:.45;cursor:not-allowed}
+.end-turn-btn{background:transparent;border:1.5px solid var(--line);color:var(--fg);border-radius:12px;padding:14px 20px;font-weight:700;font-size:14px}
+.end-turn-btn:disabled{opacity:.35;cursor:not-allowed}
+.hint{font-size:12px;color:var(--muted);margin:0;text-align:center}
+
+.log{display:flex;flex-direction:column-reverse;gap:6px;max-height:420px;overflow-y:auto;font-size:13px}
+.log-entry{border-left:3px solid var(--accent);padding:4px 10px;color:var(--muted)}
+.log-entry b{color:var(--fg)}
+.log-entry.rent{border-left-color:var(--gold);background:color-mix(in srgb, var(--gold) 10%, transparent)}
+.log-entry.debt{border-left-color:var(--bad)}
+
+.overlay{position:fixed;inset:0;background:rgba(10,15,20,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal{background:var(--surface);border-radius:18px;max-width:520px;width:100%;padding:26px;display:flex;flex-direction:column;gap:14px;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:20px}
+.modal .kicker{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin:0}
+.modal p{font-size:15px;line-height:1.55;color:var(--muted);margin:0}
+.opt-btn{text-align:left;border:1.5px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.4}
+.opt-btn:hover{border-color:var(--accent)}
+.opt-btn:disabled{opacity:.45;cursor:not-allowed}
+.opt-btn.correct{border-color:var(--good);background:color-mix(in srgb, var(--good) 18%, var(--surface-2))}
+.opt-btn.wrong{border-color:var(--bad);background:color-mix(in srgb, var(--bad) 18%, var(--surface-2))}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.modal-actions button{border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+.modal-actions button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.modal-actions button:disabled{opacity:.45;cursor:not-allowed}
+.badge-money{font-variant-numeric:tabular-nums;font-weight:800}
+.badge-money.pos{color:var(--good)}
+.badge-money.neg{color:var(--bad)}
+.gabarito-box{background:var(--surface-2);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--muted);display:none;line-height:1.5}
+.gabarito-box.show{display:block}
+.info-card{border:2px solid var(--line);border-radius:14px;overflow:hidden}
+.info-head{color:#fff;padding:14px 16px;font-family:'Poppins',Arial,sans-serif;font-weight:800;font-size:19px;text-align:center}
+.info-head.dark-ink{color:#3A2605}
+.info-row{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-top:1px solid var(--line);font-size:15px}
+.info-row span:first-child{color:var(--muted)}
+.info-row b{font-variant-numeric:tabular-nums}
+.info-desc{padding:12px 16px;font-size:14px;color:var(--muted);line-height:1.5;border-top:1px solid var(--line)}
+.endgame-row{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.endgame-row.winner{border-color:var(--gold);background:color-mix(in srgb, var(--gold) 12%, var(--surface))}
+[hidden]{display:none!important}
+.online-box{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:18px}
+.online-box h3{font-size:16px}
+.online-box input{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font-size:16px;width:100%}
+.count-row-btn{padding:12px 18px;border-radius:10px;border:1px solid var(--accent);background:var(--surface-2);color:var(--fg);font-weight:800;font-size:15px}
+.lobby-code{font-size:22px;letter-spacing:4px;color:var(--accent)}
+.lobby-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;font-weight:700}
+
+/* ===== Fidelidade ao tabuleiro impresso (PDF 57x41 cm) ===== */
+.sq::after{border:1px solid rgba(30,45,65,.55)}
+.icn{width:3.2em;height:3.2em}
+.deck{box-shadow:0 calc(var(--u)*.8) 0 color-mix(in srgb, var(--c) 62%, #000)}
+.center > .deck:nth-child(1){transform:rotate(-2.2deg)}
+.center > .deck:nth-child(2){transform:rotate(1.6deg)}
+.center > .deck:nth-child(3){transform:rotate(-1.6deg)}
+.center > .deck:nth-child(4){transform:rotate(2deg)}
+.plq-title{color:#1B3A63;-webkit-text-stroke:calc(var(--u)*.32) #3F74C6;paint-order:stroke fill;
+  text-shadow:calc(var(--u)*.3) calc(var(--u)*.3) 0 #2F5FAA,calc(var(--u)*.6) calc(var(--u)*.6) 0 #2A5398,calc(var(--u)*.9) calc(var(--u)*.9) 0 #244783}
+.cxb{border-width:calc(var(--u)*.5);border-radius:calc(var(--u)*1.4)}
+.cxb .h{font-size:calc(var(--u)*1.5);padding:calc(var(--u)*.8) 0}
+.sky i{background:#A6C5E3}
+.corner{border:1px solid rgba(30,45,65,.55)}
+
+/* ===== Interface: base (desktop) ===== */
+.board-tools{display:none}
+.board-scroll{width:100%;border-radius:6px}
+.board-stage{width:100%}
+.dock{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.dock-top{display:flex;align-items:center;justify-content:center;gap:14px}
+.dock-money{display:none;font-variant-numeric:tabular-nums;color:var(--good);font-size:17px}
+.cofres{display:block}
+
+/* ===== Celular / telas estreitas ===== */
+@media (max-width:820px){
+  body{padding-left:max(10px, env(safe-area-inset-left,0px));padding-right:max(10px, env(safe-area-inset-right,0px))}
+  .app{padding-block:12px 190px}
+  .topbar{margin-bottom:10px;align-items:center}
+  .brand h1{font-size:22px}.brand .eyebrow{font-size:10px}
+  .subline{display:none}
+  .setup-card{margin:12px auto;padding:20px;border-radius:16px}
+  .player-row input{font-size:16px;padding:12px 14px}
+  .count-row button{flex:1;padding:12px 6px}
+  .primary-btn{padding:16px}
+  .game-grid{gap:12px;grid-template-columns:minmax(0,1fr)}
+  .board-wrap{min-width:0}
+  html,body{overflow-x:hidden}
+  .board-wrap{padding:8px;gap:10px;border-radius:14px}
+  .board-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+  .tools-hint{font-size:11px;color:var(--muted);line-height:1.3}
+  .tool-btn{flex:0 0 auto;font-size:12px;font-weight:700;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+  .tool-btn[aria-pressed="true"]{border-color:var(--accent)}
+  .desk-hint{display:none}
+  /* tabuleiro ampliado: rola nos dois sentidos e segue o peão da vez */
+  .board-scroll.zoom{overflow:auto;max-height:60dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;background:#D4E5F3}
+  .board-scroll.zoom::-webkit-scrollbar{display:none}
+  .board-scroll.zoom .board-stage{width:max(980px,250vw)}
+  .board-scroll:not(.zoom){overflow:hidden}
+  @container board (max-width:1000px){
+    .nm{font-size:1.65em}.icn{width:4.2em;height:4.2em}.band b{font-size:1.15em}.band small{font-size:.8em}
+    .clbl{font-size:2.2em}.cicn{width:6.4em;height:6.4em}
+  }
+  /* barra de ações fixa embaixo */
+  .dock{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);
+    box-shadow:0 -6px 20px rgba(20,45,80,.14);padding:10px max(14px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-right,0px));gap:10px;align-items:stretch}
+  .dock-top{justify-content:space-between}
+  .dock-money{display:block}
+  .controls{flex-wrap:nowrap;gap:10px;justify-content:stretch}
+  .die{width:52px;height:52px;border-radius:14px;font-size:26px;flex:0 0 auto}
+  .roll-btn{flex:1;min-height:52px;padding:0 12px;font-size:16px}
+  .end-turn-btn{flex:0 0 auto;min-height:52px;padding:0 12px;font-size:13px;line-height:1.15;max-width:112px}
+  /* jogadores em carrossel; cofres em 2 colunas */
+  #playerList{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -4px 6px;padding:2px 4px 8px;scrollbar-width:none}
+  #playerList::-webkit-scrollbar{display:none}
+  #playerList .player-card{flex:0 0 78%;scroll-snap-align:start;margin:0}
+  .mini-btn{padding:10px 8px;font-size:12px}
+  .cofres{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+  .caixa-row{flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+  .caixa-row b{font-size:15px;color:var(--fg)}
+  .log{max-height:260px}
+  /* janelas viram painel que sobe de baixo */
+  .overlay{align-items:flex-end;padding:0}
+  .modal{max-width:none;border-radius:22px 22px 0 0;max-height:90dvh;padding:20px 18px calc(22px + env(safe-area-inset-bottom,0px));animation:sheetUp .22s ease-out}
+  .modal h3{font-size:19px}
+  .opt-btn{padding:15px 14px;font-size:15px}
+  .modal-actions button{flex:1;min-height:48px;font-size:15px}
+  @keyframes sheetUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap">
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <p class="eyebrow">Educação fiscal em jogo</p>
+      <h1>Tributópolis</h1>
+    </div>
+    <p class="subline">Versão digital do tabuleiro, para jogar em revezamento de tela entre 2 e 4 jogadores.</p>
+  </div>
+
+  <div id="setupScreen" class="setup-card">
+    <div>
+      <h2>Começar partida</h2>
+      <p class="subline" style="margin-top:6px">Cada jogador começa com R$ 500. Vence quem terminar com mais cartas de posses e melhor patrimônio, descontadas as penalidades.</p>
+    </div>
+    <div>
+      <p style="font-weight:700;font-size:13px;color:var(--muted);margin:0 0 8px">Número de jogadores</p>
+      <div class="count-row" id="countRow"></div>
+    </div>
+    <div id="playerRows" style="display:flex;flex-direction:column;gap:10px"></div>
+    <button class="primary-btn" id="startBtn">Iniciar partida</button>
+    <div class="online-box" id="onlineBox" hidden>
+      <h3>🌐 Jogar online (cada um no seu aparelho)</h3>
+      <p class="subline">Digite seu nome e crie uma sala, ou entre com o código que um amigo passar.</p>
+      <input id="onName" placeholder="Seu nome" maxlength="16" autocomplete="off">
+      <button class="primary-btn" id="onCreate">Criar sala</button>
+      <div class="player-row"><input id="onCode" placeholder="Código da sala" maxlength="4" autocomplete="off" style="text-transform:uppercase"><button class="count-row-btn" id="onJoin">Entrar</button></div>
+      <p class="subline" id="onMsg" style="color:var(--bad)"></p>
+      <div id="onLobby" hidden>
+        <p class="subline">Código da sala: <b class="lobby-code" id="lobbyCode"></b> — passe para os outros jogadores.</p>
+        <div id="lobbyList"></div>
+        <button class="primary-btn" id="onStart" hidden>Iniciar partida online</button>
+        <p class="subline" id="lobbyWait"></p>
+      </div>
+    </div>
+    <div class="rules-box">
+      <b>Como jogar:</b> jogue o dado e avance. Compre imóveis e veículos; a cada volta no Início você paga IPTU (Caixa Município) e IPVA (Caixa Estado). Responda perguntas por dinheiro, evite a Dívida Ativa (gera IOF de R$ 20 para a Caixa União) e use o empréstimo com cuidado. Cair na Prefeitura rende +R$ 50 do Banco. Cada Recibo traz uma isenção de IPTU ou de IPVA (uso único), que você pode usar quando o imposto for cobrado no Início. Durante uma Pergunta, você pode consultar seus recibos. O jogo termina quando as 13 perguntas acabam.
+    </div>
+  </div>
+
+  <div id="gameScreen" class="game-grid" hidden>
+    <div class="board-wrap">
+      <div class="board-tools">
+        <span class="tools-hint">Arraste para explorar · toque numa casa para ver detalhes</span>
+        <button type="button" class="tool-btn" id="zoomBtn" aria-pressed="true">🔍 Ver tabuleiro todo</button>
+      </div>
+      <div class="board-scroll zoom" id="boardScroll">
+        <div class="board-stage" id="boardStage">
+          <div class="board" id="board">
+            <div class="tokens-layer" id="tokensLayer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="dock" id="dock">
+        <div class="dock-top">
+          <p class="turn-banner" id="turnBanner"></p>
+          <b class="dock-money" id="dockMoney"></b>
+        </div>
+        <div class="controls">
+          <div class="die" id="dieFace">—</div>
+          <button class="roll-btn" id="rollBtn">Jogar o dado</button>
+          <button class="end-turn-btn" id="loanBtn" disabled>Pedir empréstimo</button>
+        </div>
+      </div>
+      <p class="hint desk-hint">Toque em qualquer casa do tabuleiro para ver as informações dela.</p>
+    </div>
+
+    <div class="panel" id="playersPanel">
+      <h3>Jogadores</h3>
+      <div id="playerList"></div>
+      <h3 style="margin-top:18px">Cofres e baralhos</h3>
+      <div class="cofres"><div class="caixa-row"><span>Caixa Município (IPTU)</span><b id="pMun">—</b></div>
+      <div class="caixa-row"><span>Caixa Estado (IPVA)</span><b id="pEst">—</b></div>
+      <div class="caixa-row"><span>Caixa União (IOF)</span><b id="pUni">—</b></div>
+      <div class="caixa-row"><span>Banco Central</span><b id="caixaBanco">—</b></div>
+      <div class="caixa-row"><span>Perguntas restantes</span><b id="perguntasRestantes">—</b></div>
+      <div class="caixa-row"><span>Cartas de empréstimo</span><b id="emprestimosDisp">—</b></div></div>
+    </div>
+
+    <div class="panel">
+      <h3>O que aconteceu</h3>
+      <div class="log" id="logBox"></div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="modal" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================= DATA ============================= */
+var IMOVEIS = [
+  {nome:"Tiny House", sub:"propriedade urbana", compra:70, iptu:14, aluguel:40},
+  {nome:"Casa Térrea Popular", sub:"propriedade urbana", compra:80, iptu:15, aluguel:45},
+  {nome:"Studio / Loft Urbano", sub:"propriedade urbana", compra:90, iptu:20, aluguel:40},
+  {nome:"Quitinete no Centro", sub:"propriedade urbana", compra:100, iptu:20, aluguel:60},
+  {nome:"Studio Mobiliado Perto da Universidade", sub:"propriedade urbana", compra:100, iptu:20, aluguel:55},
+  {nome:"Sobrado de Bairro", sub:"propriedade urbana", compra:120, iptu:25, aluguel:65},
+  {nome:"Casa Geminada", sub:"propriedade urbana", compra:130, iptu:28, aluguel:68},
+  {nome:"Apartamento Financiado", sub:"propriedade urbana", compra:140, iptu:28, aluguel:65},
+  {nome:"Casa Simples de Bairro", sub:"propriedade urbana", compra:150, iptu:30, aluguel:80},
+  {nome:"Apartamento Central", sub:"propriedade urbana", compra:150, iptu:30, aluguel:70},
+  {nome:"Terreno Urbano Baldio", sub:"terreno urbano", compra:150, iptu:30, aluguel:70},
+  {nome:"Flat de Temporada", sub:"propriedade de lazer", compra:180, iptu:38, aluguel:80},
+  {nome:"Casa no Centro Histórico", sub:"propriedade urbana", compra:190, iptu:38, aluguel:75},
+  {nome:"Casa de Praia / Veraneio", sub:"propriedade de lazer", compra:200, iptu:40, aluguel:85},
+  {nome:"Casa de Condomínio Fechado", sub:"propriedade urbana", compra:260, iptu:55, aluguel:95},
+  {nome:"Cobertura Duplex", sub:"residencial de luxo", compra:300, iptu:65, aluguel:100}
+];
+var VEICULOS = [
+  {nome:"Carro Popular", sub:"veículo automotor", icon:"car", compra:100, ipva:20, beneficio:4},
+  {nome:"Moto", sub:"veículo automotor", icon:"moto", compra:120, ipva:15, beneficio:6},
+  {nome:"Carro de Família (SUV)", sub:"veículo automotor", icon:"car", compra:140, ipva:35, beneficio:8},
+  {nome:"Carro Elétrico", sub:"veículo automotor", icon:"car", compra:180, ipva:25, beneficio:9},
+  {nome:"Caminhonete", sub:"veículo automotor", icon:"truck", compra:200, ipva:45, beneficio:10},
+  {nome:"Jet Ski", sub:"veículo aquático", icon:"jetski", compra:220, ipva:50, beneficio:12}
+];
+var PERGUNTAS = [
+  {nivel:"fácil",premio:100,q:"Quem cobra o IPTU?",op:["A União","Os Estados","O Município","O Banco"],c:2,exp:"O IPTU é o imposto municipal sobre a propriedade predial e territorial urbana. Quem cobra é a Prefeitura. CF, art. 156, I."},
+  {nivel:"fácil",premio:100,q:"Quem cobra o IPVA?",op:["Os Estados e o Distrito Federal","O Município","A União","O Banco"],c:0,exp:"O IPVA é de competência dos Estados e do DF. Cada ente só cobra o imposto que a Constituição lhe reservou. CF, art. 155, III."},
+  {nivel:"fácil",premio:100,q:"Qual situação gera a obrigação de pagar o IPTU?",op:["Alugar um carro","Comprar um livro","Ser dono ou possuidor de imóvel urbano","Contrair um empréstimo no banco"],c:2,exp:"O fato gerador do IPTU é a propriedade, o domínio útil ou a posse de bem imóvel localizado em zona urbana. CTN, art. 32."},
+  {nivel:"fácil",premio:100,q:"Ao pegar um empréstimo no banco para quitar uma dívida, qual imposto federal é cobrado sobre essa operação de crédito?",op:["IPTU","IPVA","IOF","Taxa de Lixo"],c:2,exp:"O IOF – Imposto sobre Operações Financeiras – é cobrado pela União em operações de crédito, como empréstimos bancários e financiamentos. CF, art. 153, V; CTN, art. 63."},
+  {nivel:"fácil",premio:100,q:"Um imposto que não foi pago no prazo e foi registrado oficialmente pelo governo vira:",op:["Isenção","Imunidade","Dívida Ativa","Empréstimo Bancário"],c:2,exp:"O crédito tributário não pago no prazo e regularmente inscrito na repartição competente é a Dívida Ativa. CTN, art. 201."},
+  {nivel:"fácil",premio:100,q:"Quando a lei dispensa o pagamento do imposto para certas pessoas, isso se chama:",op:["Isenção","Taxa","Multa","Sanção"],c:0,exp:"Isenção decorre sempre de lei que fixa as condições e requisitos, e é interpretada literalmente. CTN, arts. 111, II e 176."},
+  {nivel:"fácil",premio:100,q:"Ao adquirir um veículo, todo ano você deverá pagar um tributo ao governo pela posse daquele bem. Esse imposto é estadual e financia gastos do estado. Qual imposto é cobrado sobre essa posse?",op:["IPTU","IPVA","IOF","Taxa de Lixo"],c:1,exp:"O IPVA é um imposto estadual cobrado anualmente sobre a propriedade de veículos automotores, como carros e motos. CF, art. 155, III."},
+  {nivel:"médio",premio:150,q:"Qual alternativa distingue corretamente o IPVA do IOF no jogo e no cotidiano?",op:["IPVA incide sobre empréstimos bancários; IOF, sobre veículos","IPVA é cobrado pelo Município; IOF, pelo Estado","IPVA incide sobre a propriedade de veículos (Estadual); IOF, sobre operações de crédito/empréstimos (Federal)","Os dois são impostos cobrados pela Prefeitura"],c:2,exp:"O IPVA é estadual e incide sobre a posse de veículos automotores; o IOF é federal e incide sobre operações de crédito ao pegar empréstimos. CF, art. 155, III; CF, art. 153, V."},
+  {nivel:"médio",premio:150,q:"Quando um jogador (ou cidadão) contrai um empréstimo financeiro para cobrir uma dívida, o IOF cobrado pela União incide sobre:",op:["O valor do imóvel do jogador","O valor total do crédito/dinheiro emprestado","O modelo do veículo","A nota fiscal de compra no mercado"],c:1,exp:"O fato gerador do IOF-crédito é a efetiva entrega ou disponibilização do valor do empréstimo ao tomador. CF, art. 153, V; CTN, art. 63, I."},
+  {nivel:"médio",premio:150,q:"Um prefeito ou governador pode aumentar um imposto (como IPTU ou IPVA) apenas publicando um decreto?",op:["Sim, se publicar no Diário Oficial","Sim, pois o prefeito manda no município","Não, a criação ou aumento de tributo exige obrigatoriamente a aprovação de uma lei","Sim, desde que seja por pouco tempo"],c:2,exp:"Princípio da Legalidade: só a lei pode instituir ou majorar tributos. Decreto não pode criar nem aumentar imposto. CTN, art. 97, I e II."},
+  {nivel:"médio",premio:150,q:"No jogo, os impostos aparecem o tempo todo. Afinal, qual é a definição mais correta de um imposto no mundo real?",op:["Um prêmio em dinheiro que o governo dá para quem trabalha muito.","Um valor obrigatório que a gente paga ao governo para manter a sociedade funcionando.","Uma doação voluntária que a pessoa faz se quiser ajudar a prefeitura.","Uma multa aplicada apenas quando alguém comete um crime grave."],c:1,exp:"O tributo é uma prestação pecuniária compulsória — ou seja, obrigatória —, em moeda, que não constitui sanção de ato ilícito, instituída em lei e cobrada pelo Estado. CTN, art. 3º."},
+  {nivel:"difícil",premio:200,q:"Verdadeiro ou Falso: Um terreno urbano totalmente vazio (baldio) não paga IPTU, porque não possui nenhuma casa construída.",op:["Verdadeiro","Falso"],c:1,exp:"Falso. O fato gerador do IPTU é a propriedade, o domínio útil ou a posse de imóvel em zona urbana, com ou sem edificação. CTN, art. 32."},
+  {nivel:"difícil",premio:200,q:"Ao contrair um empréstimo bancário emergencial no jogo para não perder patrimônio, o jogador paga juros e IOF. A arrecadação do IOF vai para qual cofre público?",op:["Caixa do Município","Caixa do Estado","União Federal","Caixa de Impostos do Advogado"],c:2,exp:"O IOF é um imposto de competência exclusiva da União. Em uma estrutura federativa, ele compõe os recursos federais. CF, art. 153, V."}
+];
+var SORTE = [
+  {titulo:"Decreto Barrado", texto:"A Prefeitura tentou aumentar o IPTU por decreto. Você contestou, e o aumento foi barrado por falta de lei.", licao:"Aumentar tributo exige lei — decreto não pode majorar imposto. (CTN, art. 97, II)", valor:50, avancar:0, req:"imovel"},
+  {titulo:"Nota em Dia", texto:"Você abriu um pequeno negócio e emitiu nota fiscal em todas as vendas. Na fiscalização, nenhuma multa.", licao:"Cumprir as obrigações acessórias facilita a fiscalização e evita multas. (CTN, art. 113, § 2º)", valor:40, avancar:2},
+  {titulo:"Cada Um no Seu Quadrado", texto:"A Prefeitura cobrou IPVA do seu carro por engano. Você provou que esse imposto é do Estado, e a cobrança foi cancelada.", licao:"Cada ente só cobra o imposto que a Constituição lhe reservou. (CF, art. 155, III)", valor:30, avancar:1, req:"veiculo"},
+  {titulo:"Isenção para Quem Precisa", texto:"Uma lei estadual isentou do IPVA veículos de pessoas com deficiência. Você cumpriu os requisitos.", licao:"A isenção vale para quem se enquadra nas condições previstas em lei. (CTN, arts. 97 e 176)", valor:40, avancar:0, req:"veiculo"}
+];
+var REVES = [
+  {titulo:"Contrato Não Vale Contra o Fisco", texto:"Você alugou seu imóvel e o contrato dizia que o inquilino pagaria o IPTU. Ele não pagou, e a Prefeitura veio cobrar de você.", licao:"Acordos particulares não valem contra a Fazenda Pública. (CTN, art. 123)", valor:40, caixa:"municipio", req:"imovel"},
+  {titulo:"Imposto Não É Multa", texto:"Você deixou de pagar o IPVA achando que \"imposto é castigo e só paga quem fez algo errado\".", licao:"Tributo não é sanção de ato ilícito. (CTN, art. 3º)", valor:30, caixa:"estado", req:"veiculo"},
+  {titulo:"Nome Bonito, Mesmo Imposto", texto:"A Prefeitura criou a \"Contribuição Casa Própria\", cobrada de quem é dono de imóvel. Você ignorou, achando que não era imposto.", licao:"O que define o tributo é o fato gerador, não o nome. (CTN, art. 4º)", valor:30, caixa:"municipio", req:"imovel"},
+  {titulo:"Isenção Não Se Estica", texto:"Você tinha isenção de IPTU só para o imóvel onde mora. Comprou um segundo imóvel achando que valia para os dois.", licao:"A lei que concede isenção é interpretada literalmente. (CTN, art. 111, II)", valor:40, caixa:"municipio", req:"imovel"}
+];
+var RECIBOS = [
+  {n:1,titulo:"Quem cobra o IPTU?",txt:"O IPTU é um imposto municipal cobrado exclusivamente pela Prefeitura sobre a propriedade de imóveis situados na zona urbana.",base:"CF, art. 156, I",iso:"iptu"},
+  {n:2,titulo:"Quem cobra o IPVA?",txt:"O IPVA é um imposto de competência dos Estados e do Distrito Federal, onde cada ente só cobra o tributo que a Constituição lhe reservou.",base:"CF, art. 155, III",iso:"ipva"},
+  {n:3,titulo:"O gatilho do IPTU",txt:"A obrigação de pagar o IPTU surge no momento em que a pessoa se torna proprietária, detentora do domínio útil ou possuidora de imóvel em zona urbana.",base:"CTN, art. 32",iso:"iptu"},
+  {n:4,titulo:"Pegou empréstimo? Tem IOF!",txt:"Ao contrair empréstimos bancários, incide o IOF (Imposto sobre Operações Financeiras), que é cobrado pela União em operações de crédito.",base:"CF, art. 153, V; CTN, art. 63",iso:"ipva"},
+  {n:5,titulo:"Imposto atrasado vira Dívida Ativa!",txt:"O crédito tributário não pago no prazo regular é inscrito oficialmente pela repartição competente como Dívida Ativa.",base:"CTN, art. 201",iso:"iptu"},
+  {n:6,titulo:"O que é Isenção?",txt:"A isenção decorre sempre de uma lei específica que fixa condições e requisitos para dispensar o pagamento do imposto, sendo interpretada literalmente.",base:"CTN, arts. 111, II e 176",iso:"iptu"},
+  {n:7,titulo:"O IPVA e a posse do veículo",txt:"O IPVA é um imposto estadual cobrado anualmente de quem possui veículos automotores, como carros e motos.",base:"CF, art. 155, III",iso:"ipva"},
+  {n:8,titulo:"IPVA x IOF",txt:"O IPVA é estadual e incide sobre a posse de veículos automotores; já o IOF é federal e incide sobre operações de crédito ao pegar empréstimos.",base:"CF, art. 155, III; CF, art. 153, V",iso:"ipva"},
+  {n:9,titulo:"O fato gerador do IOF-crédito",txt:"O imposto IOF incide sobre a efetiva entrega ou disponibilização do valor do dinheiro emprestado ao tomador.",base:"CF, art. 153, V; CTN, art. 63, I",iso:"ipva"},
+  {n:10,titulo:"Princípio da Legalidade",txt:"Somente a lei pode criar ou majorar tributos. Prefeitos, governadores ou o presidente não podem alterar ou criar impostos apenas por decreto.",base:"CTN, art. 97, I e II",iso:"iptu"},
+  {n:11,titulo:"O que é um imposto?",txt:"Tributo é uma prestação obrigatória em moeda, que não constitui sanção de ato ilícito, instituída em lei e cobrada pelo Estado para manter a sociedade funcionando.",base:"CTN, art. 3º",iso:"ipva"},
+  {n:12,titulo:"Terreno vazio também paga IPTU",txt:"O fato gerador do IPTU ocorre com a propriedade ou posse de imóvel em zona urbana, existindo ou não edificação (casas ou construções) no local.",base:"CTN, art. 32",iso:"iptu"},
+  {n:13,titulo:"A competência do IOF",txt:"O IOF é um imposto de competência exclusiva da União, integrando a estrutura dos recursos federais em nossa federação.",base:"CF, art. 153, V",iso:"iptu"}
+];
+var DIVIDA_IOF = 20;
+var EMPRESTIMO_TIERS = [200,300,400];
+var N_EMPRESTIMOS = 4;
+
+/* Same order as the printed board: clockwise from INÍCIO (bottom-left), up the left side first. */
+var LAYOUT = [
+  "inicio","I0","pergunta","I1","V0","I2","recibo","I3","escola",
+  "fiscalizacao","I4","sorte","I5","V1","pergunta","I6","hospital","I7","reves","V2","recibo","I8",
+  "praca","I9","pergunta","I10","V3","escola","I11","sorte","I12",
+  "prefeitura","I13","pergunta","V4","recibo","hospital","I14","pergunta","reves","V5","recibo","pergunta","I15"];
+var NOMES = {inicio:"Início",pergunta:"Pergunta",recibo:"Recibo",sorte:"Sorte",reves:"Revés",escola:"Escola Municipal",hospital:"Hospital Estadual",
+  fiscalizacao:"Fiscalização",prefeitura:"Prefeitura",praca:"Praça",descanso:"Descanso"};
+var BOARD = LAYOUT.map(function(k){
+  if(/^I\d+$/.test(k)) return {t:"imovel", data:IMOVEIS[+k.slice(1)]};
+  if(/^V\d+$/.test(k)) return {t:"veiculo", data:VEICULOS[+k.slice(1)]};
+  return {t:k, nome:NOMES[k]};
+});
+var N = BOARD.length; // 44
+var CORNERS = {inicio:1,fiscalizacao:1,prefeitura:1,praca:1};
+var CORNERTXT = {
+  inicio:"Ponto de partida: todos os peões começam aqui com R$ 500. Quem tem empréstimo paga o Banco + IOF ao passar ou cair aqui.",
+  fiscalizacao:"Pague multa de R$ 50 ou fique preso por 3 rodadas completas sem jogar os dados. Quem tiver Dívida Ativa entrega um bem ao Banco Central ou contrai 1 empréstimo.",
+  praca:"Espaços públicos mantidos pelo governo beneficiam todos. Jogar o dado novamente.",
+  prefeitura:"Quem cai aqui vira fiscal: o devedor de Dívida Ativa paga a dívida ao fiscal como multa. Ao cair aqui, você também recebe +R$ 50 do Banco."};
+var TIPO = {
+  imovel:{band:"Imóvel",c:"#3A6EBA",ink:"#2F5EA3",icon:"building"},
+  veiculo:{band:"Veículo",c:"#E0752F",ink:"#C9611D",icon:"car"},
+  pergunta:{band:"Pergunta",sub:"casa de conhecimento",c:"#EFA02E",ink:"#D98A12",name:"PERGUNTA",icon:"question"},
+  recibo:{band:"Recibo",sub:"tire uma carta",c:"#8BB13B",ink:"#6E9424",name:"RECIBO",icon:"receipt"},
+  sorte:{band:"Sorte",sub:"tire uma carta",c:"#43A24F",ink:"#2F8A3C",name:"SORTE",icon:"clover"},
+  reves:{band:"Revés",sub:"tire uma carta",c:"#7D4CA8",ink:"#6A3A96",name:"REVÉS",icon:"bolt"},
+  escola:{band:"Descanso",sub:"casa de descanso",c:"#2E8AA0",ink:"#1F7489",name:"ESCOLA MUNICIPAL",icon:"school"},
+  hospital:{band:"Descanso",sub:"casa de descanso",c:"#2E8AA0",ink:"#1F7489",name:"HOSPITAL ESTADUAL",icon:"hospital"},
+  descanso:{band:"Descanso",sub:"casa de descanso",c:"#2E8AA0",ink:"#1F7489",name:"DESCANSO",icon:"tree"},
+  inicio:{band:"Início",c:"#1E3A5F",icon:"arrow"},
+  fiscalizacao:{band:"Fiscalização",c:"#4C5566",icon:"jail"},
+  praca:{band:"Praça",c:"#2E8AA0",icon:"tree"},
+  prefeitura:{band:"Prefeitura",c:"#2E8AA0",icon:"bank"}
+};
+var SQDESC = {
+  pergunta:"Retire uma carta e responda ao Leitor. Se acertar: ganha R$ 100 (fácil), R$ 150 (médio) ou R$ 200 (difícil) do Banco. Se errar: não ganha nada.",
+  recibo:"Retire cartas de Recibos com conceitos explicativos que ajudam a responder às cartas de perguntas. Cada recibo vale também uma isenção de IPTU ou de IPVA, de uso único.",
+  sorte:"Retire Carta de Sorte ou Revés com imprevistos cotidianos.",
+  reves:"Retire Carta de Sorte ou Revés com imprevistos cotidianos.",
+  escola:"Impostos garantem ensino e oportunidades. Ganha R$ 50 se a caixa de imposto referente ao Município tiver dinheiro.",
+  hospital:"Impostos financiam a saúde pública. Ganha R$ 30 se a caixa de impostos referente ao Estado tiver dinheiro.",
+  descanso:"Nenhuma ação."
+};
+var BANDNAME = {}, BANDC = {};
+Object.keys(TIPO).forEach(function(k){ BANDNAME[k] = TIPO[k].band; BANDC[k] = TIPO[k].c; });
+var DESC = {
+  inicio:"Ponto de partida. Ao passar ou cair aqui, cada volta cobra IPTU dos seus imóveis (Caixa Município) e IPVA dos veículos (Caixa Estado), e quita empréstimos (valor + IOF para a Caixa União).",
+  pergunta:"Responda a uma pergunta de educação fiscal. Acertou: ganha R$ 100 (fácil), R$ 150 (médio) ou R$ 200 (difícil) do Banco.",
+  recibo:"Retire uma carta de Recibo com um conceito tributário para guardar e consultar (inclusive durante as Perguntas). Cada recibo vale uma isenção de IPTU ou IPVA, de uso único.",
+  sorte:"Retire uma carta de Sorte: um imprevisto bom do dia a dia, com dinheiro do Banco.",
+  reves:"Retire uma carta de Revés: um imprevisto que desfaz um mito sobre impostos e custa dinheiro (só sai se você tiver o bem citado).",
+  escola:"Casa de descanso: impostos garantem ensino e oportunidades. Ganha R$ 50 se a Caixa Município tiver dinheiro (sai da caixa).",
+  hospital:"Casa de descanso: impostos financiam a saúde pública. Ganha R$ 30 se a Caixa Estado tiver dinheiro (sai da caixa).",
+  praca:"Casa de descanso: espaços públicos mantidos pelo governo beneficiam todos. Jogue o dado novamente.",
+  prefeitura:"Casa de descanso. Você vira fiscal: quem tiver Dívida Ativa de imposto paga o valor a você como multa (pode pedir empréstimo ao Banco). Bônus: ao cair aqui você recebe +R$ 50 do Banco.",
+  fiscalizacao:"Pague multa de R$ 50 ou fique preso por 3 rodadas. Quem tem Dívida Ativa entrega um bem ao Banco ou contrai empréstimo.",
+  descanso:"Casa neutra: nenhuma ação. Aguarde o próximo turno."
+};
+var COLORS = ["#D7263D","#F2C12E","#16A39A","#7C3AED"];
+
+/* ============================= STATE ============================= */
+var state = null;
+var playerCount = 2;
+var $ = function(id){ return document.getElementById(id); };
+/* ---- Recibos: cada carta traz uma isenção de UM imposto (IPTU ou IPVA), de uso único ---- */
+var reciboUid = 0;
+function isoLabel(i){ return i==='iptu' ? 'IPTU' : 'IPVA'; }
+function novoRecibo(r){ reciboUid++; return {uid:reciboUid, n:r.n, titulo:r.titulo, txt:r.txt, base:r.base, iso:r.iso, usada:false}; }
+function reciboBadge(r){
+  return r.usada
+    ? '<span class="tag" style="text-decoration:line-through">🎟 Isenção de '+isoLabel(r.iso)+' — já usada</span>'
+    : '<span class="tag" style="background:var(--accent);color:var(--on-accent)">🎟 Isenção de '+isoLabel(r.iso)+' · 1 uso</span>';
+}
+function reciboRow(r){
+  return '<div class="item-row" style="flex-direction:column;align-items:flex-start;gap:4px'+(r.usada?';opacity:.6':'')+'">'+
+    '<span><b>Recibo '+r.n+': '+r.titulo+'</b></span>'+
+    '<span class="meta">'+r.txt+' (Base legal: '+r.base+')</span>'+reciboBadge(r)+'</div>';
+}
+function isencoesDisp(p, iso){ return p.recibos.filter(function(r){ return !r.usada && r.iso===iso; }); }
+function money(v){ var n=Math.round(v); return (n<0?"-R$ ":"R$ ") + Math.abs(n).toLocaleString('pt-BR'); }
+function log(html, kind){ state.logs.push({h:html,k:kind||""}); renderLog(); }
+function shuffled(arr){ var a=arr.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t;} return a; }
+function venda(d){ return Math.round(d.compra*0.8/5)*5; }
+function imovelByName(n){ return IMOVEIS.filter(function(x){return x.nome===n;})[0]; }
+function veiculoByName(n){ return VEICULOS.filter(function(x){return x.nome===n;})[0]; }
+function aluguelAtual(d){ return d.aluguel + (state.aluguelExtra[d.nome]||0); }
+function curPlayer(){ return state.players[state.turn]; }
+var CAIXA_NOME = {municipio:"Caixa Município",estado:"Caixa Estado",uniao:"Caixa União"};
+
+function newGame(names){
+  state = {
+    players: names.map(function(n,i){ return {
+      id:i, nome:n, cor:COLORS[i], pos:0, dinheiro:500, imoveis:[], veiculos:[], dividas:[], recibos:[],
+      emprestimo:null, presoRodadas:0, voltas:0, voltasPend:0, pagou:{municipio:0,estado:0,uniao:0},
+      perguntasRespondidas:0, perguntasCertas:0, pesoPerguntas:0, pesoAcertos:0
+    };}),
+    turn:0, caixas:{municipio:0,estado:0,uniao:0}, caixaBanco:6400-500*names.length,
+    perguntas: shuffled(PERGUNTAS), recibosDeck: shuffled(RECIBOS), emprestimosDisp:N_EMPRESTIMOS,
+    aluguelExtra:{}, logs:[], gameOver:false, pendingRollAgain:false
+  };
+}
+
+/* Deposits a tax in a public caixa. fromCash=true takes it out of the player's money. */
+function pagarCaixa(p, k, v, fromCash){
+  if(fromCash) p.dinheiro -= v;
+  state.caixas[k] += v; p.pagou[k] += v;
+}
+
+/* ============================= SETUP ============================= */
+function renderSetup(){
+  var countRow = $('countRow'); countRow.innerHTML = "";
+  [2,3,4].forEach(function(n){
+    var btn = document.createElement('button');
+    btn.textContent = n + " jogadores";
+    btn.setAttribute('aria-pressed', n===playerCount ? "true":"false");
+    btn.onclick = function(){ playerCount = n; renderSetup(); };
+    countRow.appendChild(btn);
+  });
+  var rows = $('playerRows');
+  var oldVals = []; rows.querySelectorAll('input').forEach(function(i){oldVals.push(i.value);});
+  rows.innerHTML = "";
+  for(var i=0;i<playerCount;i++){
+    var row = document.createElement('div'); row.className = 'player-row';
+    var sw = document.createElement('div'); sw.className='swatch'; sw.style.background = COLORS[i];
+    var inp = document.createElement('input');
+    inp.placeholder = "Nome do jogador " + (i+1); inp.value = oldVals[i] || ""; inp.id = 'pname'+i;
+    row.appendChild(sw); row.appendChild(inp); rows.appendChild(row);
+  }
+}
+$('startBtn').onclick = function(){
+  var names = [];
+  for(var i=0;i<playerCount;i++){ names.push($('pname'+i).value.trim() || ("Jogador "+(i+1))); }
+  newGame(names);
+  $('setupScreen').hidden = true; $('gameScreen').hidden = false;
+  buildBoardDOM(); renderAll(); enableTurn(true);
+};
+renderSetup();
+
+/* ============================= ONLINE ============================= */
+var net = {on:false, db:null, pid:null, seat:-1, code:null, seats:[], members:[], v:0, applying:false, timer:null, busy:false, pending:false, endShown:false};
+function myTurn(){ return !net.on || (net.seat>=0 && state.turn===net.seat); }
+function push(force){
+  if(!net.on || net.applying || net.seat<0 || !state) return;
+  if(!force && state.turn!==net.seat) return;
+  clearTimeout(net.timer); net.timer = setTimeout(flush, 150);
+}
+function flush(){
+  if(net.busy){ net.pending = true; return; }
+  net.busy = true; net.v++;
+  net.db.doc('rooms/'+net.code+'/game/s').set({seats:net.seats, json:JSON.stringify(state), v:net.v, by:net.pid})
+    .catch(function(){}).then(function(){ net.busy = false; if(net.pending){ net.pending = false; push(true); } });
+}
+function startOnline(){
+  net.on = true; net.seat = net.seats.indexOf(net.pid);
+  $('setupScreen').hidden = true; $('gameScreen').hidden = false;
+  buildBoardDOM(); renderAll(); enableTurn(!state.gameOver);
+}
+function onGameSnap(snap){
+  if(!snap.exists) return;
+  var d = snap.data();
+  if(!net.on){ net.seats = d.seats; net.v = d.v; state = JSON.parse(d.json); startOnline(); return; }
+  if(d.by===net.pid || d.v<=net.v) return;
+  net.v = d.v; net.applying = true;
+  try{
+    state = JSON.parse(d.json);
+    renderAll(); enableTurn(!state.gameOver);
+    if(state.gameOver && !net.endShown){ net.endShown = true; endGame(); }
+  } finally { net.applying = false; }
+}
+function renderLobby(){
+  var m = net.members;
+  $('lobbyList').innerHTML = m.map(function(x,i){ return '<div class="lobby-row"><span class="dot" style="background:'+COLORS[i]+'"></span>'+esc(x.nome)+(x.id===net.pid?' (você)':'')+(i===0?' · anfitrião':'')+'</div>'; }).join('');
+  var host = m.length && m[0].id===net.pid;
+  $('onStart').hidden = !host || m.length<2;
+  $('lobbyWait').textContent = host ? (m.length<2 ? 'Aguardando mais jogadores (mínimo 2, máximo 4)…' : '') : 'Aguardando o anfitrião iniciar a partida…';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+/* Modo fora do Claude: sala ponto a ponto (WebRTC via PeerJS). O anfitrião guarda a sala; mesma API mínima do db. */
+function makeP2P(code, host){
+  return new Promise(function(resolve, reject){
+    var docs = {}, subs = [], conns = [], settled = false;
+    function notify(){ subs.forEach(function(f){ f(); }); }
+    function apply(p,d){ docs[p] = d; notify(); }
+    function send(m, except){ conns.forEach(function(c){ if(c!==except && c.open) c.send(m); }); }
+    function wire(c){
+      c.on('data', function(m){
+        if(m.t==='set'){ apply(m.p, m.d); if(host) send(m, c); }
+        else if(m.t==='all'){ for(var k in m.docs) docs[k] = m.docs[k]; notify(); }
+      });
+      c.on('close', function(){ conns = conns.filter(function(x){ return x!==c; }); });
+    }
+    var cfg = window.__PEER_CFG, id = 'tribv1-'+code;
+    var peer = host ? new Peer(id, cfg) : new Peer(cfg);
+    peer.on('error', function(e){ if(!settled){ settled = true; reject(e); } });
+    var db = {
+      doc: function(p){ return {
+        set: function(d){ d = JSON.parse(JSON.stringify(d)); apply(p,d); send({t:'set',p:p,d:d}); return Promise.resolve(); },
+        onSnapshot: function(n){ var last; var f = function(){ var s = JSON.stringify(docs[p]); if(s!==last){ last = s; n({id:p.split('/').pop(), exists:(p in docs), data:function(){ return docs[p]; }}); } }; subs.push(f); setTimeout(f,0); return function(){}; }
+      }; },
+      collection: function(p){ return { onSnapshot: function(n){ var last; var f = function(){
+        var ds = Object.keys(docs).filter(function(k){ return k.indexOf(p+'/')===0 && k.split('/').length===p.split('/').length+1; }).map(function(k){ return {id:k.split('/').pop(), data:function(){ return docs[k]; }}; });
+        var s = JSON.stringify(ds.map(function(d){ return d.data(); })); if(s!==last){ last = s; n({docs:ds}); } }; subs.push(f); setTimeout(f,0); return function(){}; } }; }
+    };
+    peer.on('open', function(){
+      if(host){
+        settled = true; resolve(db);
+        peer.on('connection', function(c){ conns.push(c); wire(c); c.on('open', function(){ c.send({t:'all', docs:docs}); }); });
+      } else {
+        var c = peer.connect(id, {reliable:true}); conns.push(c); wire(c);
+        c.on('open', function(){ settled = true; resolve(db); });
+        setTimeout(function(){ if(!settled){ settled = true; reject(new Error('timeout')); } }, 12000);
+      }
+    });
+  });
+}
+function conectarRede(code, host){
+  if(!net.p2p) return Promise.resolve();
+  return makeP2P(code, host).then(function(db){ net.db = db; });
+}
+function entrarSala(code, nome, host){
+  net.code = code; $('onMsg').textContent = 'Conectando…';
+  conectarRede(code, host).then(function(){ return net.db.doc('rooms/'+code+'/members/'+net.pid).set({nome:nome, t:host?0:Date.now()}); }).then(function(){
+    $('onLobby').hidden = false; $('lobbyCode').textContent = code; $('onMsg').textContent = '';
+    net.db.collection('rooms/'+code+'/members').onSnapshot(function(s){
+      var list = []; s.docs.forEach(function(d){ var x = d.data(); list.push({id:d.id, nome:x.nome, t:x.t}); });
+      list.sort(function(a,b){ return a.t-b.t || (a.id<b.id?-1:1); });
+      net.members = list.slice(0,4); if(!net.on) renderLobby();
+    }, function(){ $('onMsg').textContent = 'Conexão com a sala perdida.'; });
+    net.db.doc('rooms/'+code+'/game/s').onSnapshot(onGameSnap);
+  }).catch(function(e){ $('onMsg').textContent = net.p2p ? (host ? 'Não consegui criar a sala. Tente de novo.' : 'Sala não encontrada. Confira o código e se o anfitrião está com a página aberta.') : 'Não foi possível entrar. O dono do jogo precisa dar acesso de edição a você.'; });
+}
+function pegarNome(){
+  var v = $('onName').value.trim().slice(0,16);
+  if(!v){ $('onMsg').textContent = 'Digite seu nome primeiro.'; return null; }
+  try{ localStorage.setItem('trib_name', v); }catch(e){}
+  return v;
+}
+$('onCreate').onclick = function(){ var n = pegarNome(); if(!n) return; var a='ABCDEFGHJKLMNPQRSTUVWXYZ', c=''; for(var i=0;i<4;i++) c += a[Math.floor(Math.random()*a.length)]; entrarSala(c, n, true); };
+$('onJoin').onclick = function(){ var n = pegarNome(); if(!n) return; var c = $('onCode').value.trim().toUpperCase(); if(c.length!==4){ $('onMsg').textContent = 'O código tem 4 letras.'; return; } entrarSala(c, n, false); };
+$('onStart').onclick = function(){
+  var m = net.members; if(m.length<2) return;
+  newGame(m.map(function(x){ return x.nome; })); net.seats = m.map(function(x){ return x.id; }); net.v = 1;
+  startOnline();
+  net.db.doc('rooms/'+net.code+'/game/s').set({seats:net.seats, json:JSON.stringify(state), v:1, by:net.pid});
+};
+(function(){
+  try{ net.pid = localStorage.getItem('trib_pid'); }catch(e){}
+  if(!net.pid){ net.pid = Math.random().toString(36).slice(2,12); try{ localStorage.setItem('trib_pid', net.pid); }catch(e){} }
+  function semClaude(){ if(window.Peer){ net.p2p = true; $('onlineBox').hidden = false; try{ var n = localStorage.getItem('trib_name'); if(n) $('onName').value = n; }catch(e){} } }
+  if(!(window.claude && window.claude.use)) return semClaude();
+  window.claude.use('db').then(function(db){
+    if(!db) return semClaude(); net.db = db; $('onlineBox').hidden = false;
+    try{ var n = localStorage.getItem('trib_name'); if(n) $('onName').value = n; }catch(e){}
+  }).catch(function(){});
+})();
+
+/* ============================= BOARD ============================= */
+/* Board measured in units: 152 x 108 (57 x 41 cm). Corners 16 x 16, top/bottom squares 10 x 16, side squares 16 x 9.5. */
+var BW = 152, BH = 108;
+function geom(i){
+  if(i===0)  return {x:0,   y:92, w:16, h:16, side:'corner'};
+  if(i<=8)   return {x:0,   y:92-i*9.5, w:16, h:9.5, side:'left'};
+  if(i===9)  return {x:0,   y:0,  w:16, h:16, side:'corner'};
+  if(i<=21)  return {x:16+(i-10)*10, y:0, w:10, h:16, side:'top'};
+  if(i===22) return {x:136, y:0,  w:16, h:16, side:'corner'};
+  if(i<=30)  return {x:136, y:16+(i-23)*9.5, w:16, h:9.5, side:'right'};
+  if(i===31) return {x:136, y:92, w:16, h:16, side:'corner'};
+  return {x:136-(i-31)*10, y:92, w:10, h:16, side:'bottom'};
+}
+function pct(v, t){ return (v/t*100).toFixed(4)+'%'; }
+function U(v){ return 'calc(var(--u)*'+v+')'; }
+function P(x,y,w,h){ return 'left:'+U(x)+';top:'+U(y)+(w!=null?';width:'+U(w):'')+(h!=null?';height:'+U(h):''); }
+var SVG = {
+  building:'<rect x="5" y="3" width="14" height="18" rx="1.2"/><g fill="#fff"><rect x="8" y="6" width="2.6" height="2.6"/><rect x="13.4" y="6" width="2.6" height="2.6"/><rect x="8" y="10.8" width="2.6" height="2.6"/><rect x="13.4" y="10.8" width="2.6" height="2.6"/><rect x="10.6" y="16" width="2.8" height="5"/></g>',
+  car:'<path d="M4.5 11l1.8-4.2A2 2 0 0 1 8.1 5.6h7.8a2 2 0 0 1 1.8 1.2L19.5 11H21v6.5h-2V19h-3v-1.5H8V19H5v-1.5H3V11z"/><g fill="#fff"><path d="M7 10.5l1.2-3h7.6l1.2 3z"/><circle cx="7" cy="14" r="1.4"/><circle cx="17" cy="14" r="1.4"/></g>',
+  truck:'<path d="M2 9h11V6.5a1 1 0 0 1 1-1h3.2a2 2 0 0 1 1.7.9L21 9.6V16h-1.6a2.5 2.5 0 0 0-4.8 0H9.4a2.5 2.5 0 0 0-4.8 0H2z"/><circle cx="7" cy="16.5" r="2.1"/><circle cx="17" cy="16.5" r="2.1"/><path fill="#fff" d="M14.6 7h2.4l1.8 2.4h-4.2z"/>',
+  moto:'<g fill="none" stroke="currentColor" stroke-width="2"><circle cx="5.5" cy="16" r="3.2"/><circle cx="18.5" cy="16" r="3.2"/><path d="M5.5 16l4-5h5l4 5M14 7h3l1.5 4"/></g><path d="M8.5 9h6l-1 3h-4z"/>',
+  jetski:'<path d="M3 15h14.5l3.5-3h-6l-2-3h-3l1 3H4z"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M2 19c2 0 2-1.2 4-1.2S8 19 10 19s2-1.2 4-1.2 2 1.2 4 1.2 2-1.2 4-1.2"/>',
+  clover:'<circle cx="8.6" cy="8.6" r="3.8"/><circle cx="15.4" cy="8.6" r="3.8"/><circle cx="8.6" cy="15.4" r="3.8"/><circle cx="15.4" cy="15.4" r="3.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 12c1 4 3 7 6 9"/>',
+  bolt:'<path d="M13.5 2L4.5 13.5h6.5L10 22l9.5-12.5H13z"/>',
+  question:'<circle cx="12" cy="12" r="10"/><path fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" d="M9 9.2a3 3 0 1 1 4.2 2.8c-.9.4-1.2 1-1.2 2"/><circle cx="12" cy="17.4" r="1.4" fill="#fff"/>',
+  receipt:'<path d="M5 2h14v20l-2.3-1.6L14.3 22 12 20.4 9.7 22l-2.4-1.6L5 22z"/><path stroke="#fff" stroke-width="1.6" stroke-linecap="round" d="M8.5 7h7M8.5 11h7M8.5 15h4.5"/>',
+  school:'<path d="M12 2.5l9.5 5.5v2h-19V8z"/><path d="M3.5 11h17v10h-17z"/><g fill="#fff"><rect x="6" y="13" width="2.4" height="3"/><rect x="15.6" y="13" width="2.4" height="3"/><rect x="10.5" y="14" width="3" height="7"/><circle cx="12" cy="7.3" r="1.3"/></g>',
+  hospital:'<rect x="3" y="3" width="18" height="18" rx="3.5"/><path fill="#fff" d="M10 6.5h4v3.5h3.5v4H14v3.5h-4V14H6.5v-4H10z"/>',
+  tree:'<circle cx="12" cy="9" r="7"/><rect x="10.8" y="13" width="2.4" height="9" rx="1"/>',
+  bank:'<path d="M12 2l10 5v2H2V7z"/><rect x="4" y="10.5" width="2.6" height="8"/><rect x="8.5" y="10.5" width="2.6" height="8"/><rect x="12.9" y="10.5" width="2.6" height="8"/><rect x="17.4" y="10.5" width="2.6" height="8"/><rect x="2" y="19.5" width="20" height="2.5"/>',
+  jail:'<rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M8 3v18M12 3v18M16 3v18"/>',
+  arrow:'<path d="M12 2l9.5 10H16v10H8V12H2.5z"/>',
+  star:'<path d="M12 2.5l2.9 6.2 6.7.8-5 4.6 1.4 6.7L12 17.4l-6 3.4 1.4-6.7-5-4.6 6.7-.8z"/>',
+  house:'<path d="M12 3l10 8.6h-3V21h-5v-6h-4v6H5v-9.4H2z"/>',
+  card:'<rect x="2" y="5" width="20" height="14" rx="2.2"/><rect x="2" y="8.5" width="20" height="2.6" fill="#fff"/><rect x="5" y="14" width="6" height="2" rx=".6" fill="#fff"/>',
+  coin:'<circle cx="12" cy="12" r="10"/><text x="12" y="15.4" text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff" font-family="Poppins,Arial,sans-serif">R$</text>'
+};
+function ic(name, cls){ return '<svg class="'+(cls||'icn')+'" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+SVG[name]+'</svg>'; }
+function squareLabel(sq){
+  if(sq.t==='imovel' || sq.t==='veiculo') return sq.data.nome;
+  return sq.nome || sq.t;
+}
+function cardHTML(sq){
+  var T = TIPO[sq.t], band, name, icon, desc;
+  if(sq.t==='imovel'){
+    var d = sq.data;
+    band = '<b>Imóvel</b><small>'+d.sub+'</small>'; name = d.nome; icon = 'building';
+    desc = 'Compra '+money(d.compra)+' (Banco)<br>IPTU '+money(d.iptu)+' (Cx. Município)<br>Aluguel '+money(d.aluguel);
+  } else if(sq.t==='veiculo'){
+    var v = sq.data;
+    band = '<b>Veículo</b><small>'+v.sub+'</small>'; name = v.nome; icon = v.icon;
+    desc = 'Compra '+money(v.compra)+' (Banco)<br>IPVA '+money(v.ipva)+' (Cx. Estado)<br>Benefício de Posse: avance +'+v.beneficio+' casas extras';
+  } else {
+    band = '<b>'+T.band+'</b><small>'+T.sub+'</small>'; name = T.name; icon = T.icon; desc = SQDESC[sq.t] || '';
+  }
+  return '<span class="card"><span class="band">'+band+'</span><span class="main"><span class="nm">'+name+'</span>'+ic(icon)+
+    '<span class="desc">'+desc+'</span></span></span>';
+}
+function buildBoardDOM(){
+  var board = $('board'), layer = $('tokensLayer');
+  board.innerHTML = "";
+  for(var i=0;i<N;i++){
+    var sq = BOARD[i], g = geom(i), T = TIPO[sq.t];
+    var el = document.createElement('button'); el.type = 'button';
+    el.className = 'sq type-'+sq.t+' s-'+g.side+(g.side==='corner'?' corner':'');
+    el.style.cssText = 'left:'+pct(g.x,BW)+';top:'+pct(g.y,BH)+';width:'+pct(g.w,BW)+';height:'+pct(g.h,BH)+';--band:'+T.c+';--ink:'+(T.ink||T.c);
+    el.id = 'sq'+i; el.setAttribute('data-i', i);
+    var nome = squareLabel(sq);
+    el.setAttribute('aria-label', 'Ver informações: '+nome);
+    if(g.side==='corner'){
+      el.innerHTML = '<span class="corner-in">'+ic(T.icon,'cicn')+'<span class="clbl">'+NOMES[sq.t].toUpperCase()+'</span><span class="cdesc">'+CORNERTXT[sq.t]+'</span></span>';
+    } else {
+      el.innerHTML = cardHTML(sq);
+    }
+    el.onclick = (function(idx){ return function(){ if($('overlay').hidden) showInfo(idx); }; })(i);
+    board.appendChild(el);
+  }
+
+  /* center artwork, positioned in board units relative to the 120 x 76 center area */
+  var sky = '', hs = [5,7.5,4,9,6,8.5,3.5,6.5,10,5.5,7,4.5,8,6,9.5,5,7,4,8.5,6,7.5,5,9,6.5], bw = [3,2.4,3.4,2.6,3,2.2,3.6,2.8];
+  hs.forEach(function(h,k){ sky += '<i style="height:'+U(h)+';flex:'+bw[k%bw.length]+'"></i>'; });
+  function deck(x, c, icon, label, extra){
+    return '<div class="deck" style="'+P(x,2.3,15.9,9)+';--c:'+c+'"><div class="dic">'+ic(icon,'')+'</div>'+label+(extra||'')+'</div>';
+  }
+  function tax(cx, c, icon, label, sub){
+    return '<div class="tax" style="'+P(cx-6,31.4,12)+';--c:'+c+'"><div class="circ">'+ic(icon,'')+'</div><b>'+label+'</b><small>'+sub+'</small></div>';
+  }
+  function cx(x, c, title, id, icon, label){
+    return '<div class="cxb" style="'+P(x,53.6,25.2,18.2)+';--c:'+c+'"><div class="h">'+title+'</div><div class="b">'+ic(icon,'')+
+      '<span class="val" id="'+id+'">R$ 0</span><small>'+label+'</small></div></div>';
+  }
+  var center = document.createElement('div');
+  center.className = 'center';
+  center.innerHTML =
+    deck(12.3,'#43A24F','clover','SORTE') +
+    deck(31.7,'#7D4CA8','bolt','REVÉS') +
+    deck(72.3,'#EFA02E','question','PERGUNTA','<small><span id="cPerg">—</span> restantes</small>') +
+    deck(92,'#8BB13B','receipt','RECIBO') +
+    '<h2 class="plq-title" style="top:'+U(14)+'">TRIBUTÓPOLIS</h2>' +
+    '<div class="plq-pill" style="'+P(37.5,25.6,45,3)+'">Aprendendo educação fiscal por meio de um jogo de tabuleiro</div>' +
+    tax(17.6,'#3A6EBA','house','IPTU','Casa · Município') +
+    tax(30.2,'#E0752F','car','IPVA','Carro · Estado / DF') +
+    tax(43.1,'#C9457E','card','IOF','Crédito · União') +
+    '<div class="legend-box" style="'+P(53.4,32.4,40)+'"><h4>CORES DAS CASAS</h4><div class="legend">'+
+      '<span><i style="background:#3A6EBA"></i>Imóvel</span><span><i style="background:#E0752F"></i>Veículo</span><span><i style="background:#43A24F"></i>Sorte</span><span><i style="background:#7D4CA8"></i>Revés</span>'+
+      '<span><i style="background:#EFA02E"></i>Pergunta</span><span><i style="background:#8BB13B"></i>Recibo</span><span><i style="background:#2E8AA0"></i>Descanso</span><span><i style="background:#4C5566"></i>Fiscalização</span>'+
+    '</div><p class="legend-note">Casas de descanso: Escola, Praça, Hospital e Prefeitura.<br>Sentido do jogo: horário, a partir do INÍCIO.</p></div>' +
+    '<div class="sky" style="top:'+U(43.6)+';height:'+U(11.2)+'">'+sky+'</div>' +
+    '<div class="ground" style="top:'+U(54.6)+';height:'+U(.7)+'"></div>' +
+    cx(3.5,'#1E3A5F','CAIXA UNIÃO','cUni','star','recebe o IOF') +
+    cx(31.5,'#3A6EBA','CAIXA MUNICÍPIO','cMun','bank','recebe o IPTU') +
+    cx(63.2,'#E0752F','CAIXA ESTADO','cEst','arrow','recebe o IPVA') +
+    cx(91.5,'#43A24F','BANCO CENTRAL','cBanco','coin','guarda os recursos e paga os prêmios') +
+    '<p class="mission" style="top:'+U(73.4)+'">MISSÃO FINAL: CONSTRUA SUA CIDADE</p>';
+  board.appendChild(center);
+  board.appendChild(layer);
+}
+/* Zoom do tabuleiro (celular): centraliza o peão da vez */
+function followToken(){
+  var sc = $('boardScroll'), st = $('boardStage');
+  if(!sc || !state || !sc.classList.contains('zoom') || !sc.clientWidth || sc.scrollWidth<=sc.clientWidth+2 && sc.scrollHeight<=sc.clientHeight+2) return;
+  var g = geom(state.players[state.turn].pos);
+  var cx = (g.x+g.w/2)/BW*st.clientWidth, cy = (g.y+g.h/2)/BH*st.clientHeight;
+  sc.scrollTo({left:Math.max(0,cx-sc.clientWidth/2), top:Math.max(0,cy-sc.clientHeight/2), behavior:'smooth'});
+}
+function setZoom(on){
+  var sc = $('boardScroll'), b = $('zoomBtn');
+  sc.classList.toggle('zoom', on);
+  b.setAttribute('aria-pressed', on?'true':'false');
+  b.textContent = on ? '🔍 Ver tabuleiro todo' : '🔍 Aproximar';
+  sc.scrollLeft = 0; sc.scrollTop = 0;
+  if(on) setTimeout(followToken, 60);
+}
+$('zoomBtn').onclick = function(){ setZoom(!$('boardScroll').classList.contains('zoom')); };
+function renderTokens(){
+  setTimeout(followToken, 0); push();
+  var layer = $('tokensLayer'); layer.innerHTML = "";
+  state.players.forEach(function(p,idx){
+    var g = geom(p.pos);
+    var x = (g.x+g.w/2)/BW*100, y = (g.y+g.h/2)/BH*100;
+    var off = g.side==='corner' ? 2.6 : 1.7;
+    var tok = document.createElement('div');
+    tok.className = 'token'; tok.style.background = p.cor; tok.title = p.nome;
+    tok.style.left = 'calc('+x.toFixed(4)+'% + var(--u)*'+(idx%2===0?-off:off)+')';
+    tok.style.top  = 'calc('+y.toFixed(4)+'% + var(--u)*'+(idx<2?-off:off)+')';
+    layer.appendChild(tok);
+  });
+}
+function ownerOf(list, nome){
+  for(var i=0;i<state.players.length;i++){ if(state.players[i][list].indexOf(nome) !== -1) return state.players[i]; }
+  return null;
+}
+function renderOwnership(){
+  for(var i=0;i<N;i++){
+    var sq = BOARD[i];
+    if(sq.t!=='imovel' && sq.t!=='veiculo') continue;
+    var el = $('sq'+i); if(!el) continue;
+    var old = el.querySelector('.owner-flag'); if(old) old.remove();
+    var dono = ownerOf(sq.t==='imovel'?'imoveis':'veiculos', sq.data.nome);
+    if(dono){
+      el.classList.add('owned'); el.style.setProperty('--own', dono.cor);
+      var f = document.createElement('div'); f.className='owner-flag'; f.style.background=dono.cor; f.title='Dono: '+dono.nome;
+      el.appendChild(f);
+    } else { el.classList.remove('owned'); }
+  }
+}
+
+/* ============================= INFO MODAL (click on a square) ============================= */
+function infoRow(a,b){ return '<div class="info-row"><span>'+a+'</span><b>'+b+'</b></div>'; }
+function showInfo(i){
+  var sq = BOARD[i], col = BANDC[sq.t], nome = squareLabel(sq), body = "";
+  if(sq.t==='imovel'){
+    var d = sq.data, dono = ownerOf('imoveis', d.nome), extra = state.aluguelExtra[d.nome]||0;
+    body = infoRow('Preço', money(d.compra)) + infoRow('Aluguel', money(aluguelAtual(d)) + (extra?' <small>(+R$ '+extra+')</small>':'')) +
+      infoRow('IPTU (por volta)', money(d.iptu)) + infoRow('Preço de venda', money(venda(d))) +
+      infoRow('Dono', dono?('<span style="color:'+dono.cor+'">●</span> '+dono.nome):'Disponível no Banco');
+  } else if(sq.t==='veiculo'){
+    var v = sq.data, donoV = ownerOf('veiculos', v.nome);
+    body = infoRow('Preço', money(v.compra)) + infoRow('IPVA (por volta)', money(v.ipva)) +
+      infoRow('Benefício', '+'+v.beneficio+' casas ao comprar') + infoRow('Preço de venda', money(venda(v))) +
+      infoRow('Dono', donoV?('<span style="color:'+donoV.cor+'">●</span> '+donoV.nome):'Disponível no Banco');
+  } else {
+    body = '<div class="info-desc">'+DESC[sq.t]+'</div>';
+  }
+  showModal('<p class="kicker">'+BANDNAME[sq.t]+'</p>'+
+    '<div class="info-card"><div class="info-head'+(sq.t==='pergunta'?' dark-ink':'')+'" style="background:'+col+'">'+nome+'</div>'+body+'</div>'+
+    '<div class="modal-actions"><button class="primary" id="okInfo">Fechar</button></div>');
+  $('okInfo').onclick = function(){ $('overlay').hidden = true; };
+}
+
+/* ============================= HUD ============================= */
+function renderAll(){
+  renderPlayers(); renderCaixas(); renderTokens(); renderOwnership(); renderLog(); push();
+  $('perguntasRestantes').textContent = state.perguntas.length;
+  $('emprestimosDisp').textContent = state.emprestimosDisp+" de "+N_EMPRESTIMOS;
+  var cp = curPlayer();
+  $('turnBanner').innerHTML = state.gameOver ? 'Fim de jogo' : '<span class="dot" style="background:'+cp.cor+'"></span>Vez de '+cp.nome;
+  $('dockMoney').textContent = state.gameOver ? '' : money(cp.dinheiro);
+  if(net.on && !state.gameOver){ $('turnBanner').innerHTML += myTurn() ? ' — <b>sua vez!</b>' : ' — aguarde'; }
+}
+function enableTurn(on){
+  on = on && myTurn();
+  var p = curPlayer();
+  $('rollBtn').disabled = !on || state.gameOver;
+  $('loanBtn').disabled = !on || state.gameOver || !!p.emprestimo || state.emprestimosDisp<=0;
+}
+function renderPlayers(){
+  var box = $('playerList'); box.innerHTML = "";
+  state.players.forEach(function(p,i){
+    var card = document.createElement('div');
+    card.className = 'player-card' + (i===state.turn && !state.gameOver ? ' active':'');
+    var tags = '<span class="tag">volta '+p.voltas+'</span>';
+    if(p.imoveis.length) tags += '<span class="tag">'+p.imoveis.length+' imóvel(is)</span>';
+    if(p.veiculos.length) tags += '<span class="tag">'+p.veiculos.length+' veículo(s)</span>';
+    var nIso = p.recibos.filter(function(r){return !r.usada;}).length;
+    if(nIso) tags += '<span class="tag">🎟 '+nIso+' isenção(ões)</span>';
+    if(p.dividas.length) tags += '<span class="tag warn">dívida ativa</span>';
+    if(p.emprestimo) tags += '<span class="tag warn">empréstimo ativo</span>';
+    if(p.presoRodadas>0) tags += '<span class="tag warn">preso '+p.presoRodadas+' rodada(s)</span>';
+    card.innerHTML = '<div class="pname"><span class="dot" style="background:'+p.cor+'"></span>'+p.nome+'</div>'+
+      '<div class="pmoney">'+money(p.dinheiro)+'</div><div class="ptags">'+tags+'</div>'+
+      '<div class="pactions"><button class="mini-btn" data-bens="'+i+'">Bens</button><button class="mini-btn" data-recibos="'+i+'">Recibos</button></div>';
+    box.appendChild(card);
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-bens]'), function(btn){
+    btn.onclick = function(){ if(!$('overlay').hidden) return; showBens(state.players[+btn.getAttribute('data-bens')]); };
+  });
+  Array.prototype.forEach.call(box.querySelectorAll('[data-recibos]'), function(btn){
+    btn.onclick = function(){ if(!$('overlay').hidden) return; showRecibos(state.players[+btn.getAttribute('data-recibos')]); };
+  });
+}
+function dividaTotal(d){ return d.valor + d.iof; }
+function showBens(p){
+  var rows = "";
+  p.imoveis.forEach(function(n){ var d=imovelByName(n);
+    rows += '<div class="item-row"><span>🏠 '+n+'</span><span class="meta">IPTU '+money(d.iptu)+' · aluguel '+money(aluguelAtual(d))+' · venda '+money(venda(d))+'</span></div>'; });
+  p.veiculos.forEach(function(n){ var d=veiculoByName(n);
+    rows += '<div class="item-row"><span>🚗 '+n+'</span><span class="meta">IPVA '+money(d.ipva)+' · venda '+money(venda(d))+'</span></div>'; });
+  if(p.emprestimo) rows += '<div class="item-row"><span>💳 Empréstimo ativo</span><span class="meta">'+money(p.emprestimo.valor+p.emprestimo.extra+p.emprestimo.iof)+' a quitar no Início (IOF '+money(p.emprestimo.iof)+')</span></div>';
+  p.dividas.forEach(function(d){ rows += '<div class="item-row"><span>⚠️ '+d.titulo+'</span><span class="meta">'+money(dividaTotal(d))+' (inclui IOF '+money(d.iof)+')</span></div>'; });
+  if(!rows) rows = '<p class="empty-note">Nenhum bem, empréstimo ou dívida no momento.</p>';
+  showModal('<p class="kicker">Bens de '+p.nome+'</p><h3>Imóveis, veículos e pendências</h3><div style="display:flex;flex-direction:column;gap:8px">'+rows+'</div>'+
+    '<div class="modal-actions"><button class="primary" id="okBens">Fechar</button></div>');
+  $('okBens').onclick = function(){ $('overlay').hidden = true; };
+}
+function showRecibos(p){
+  var rows = p.recibos.map(reciboRow).join('');
+  if(!rows) rows = '<p class="empty-note">Nenhum recibo coletado ainda.</p>';
+  showModal('<p class="kicker">Recibos de '+p.nome+'</p><h3>Conceitos e isenções coletados</h3><div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">'+rows+'</div>'+
+    '<div class="modal-actions"><button class="primary" id="okRecList">Fechar</button></div>');
+  $('okRecList').onclick = function(){ $('overlay').hidden = true; };
+}
+function renderCaixas(){
+  if($('cMun')){ $('cMun').textContent = money(state.caixas.municipio); $('cEst').textContent = money(state.caixas.estado);
+    $('cUni').textContent = money(state.caixas.uniao); $('cBanco').textContent = money(state.caixaBanco); $('cPerg').textContent = state.perguntas.length; }
+  $('caixaBanco').textContent = money(state.caixaBanco);
+  $('pMun').textContent = money(state.caixas.municipio); $('pEst').textContent = money(state.caixas.estado); $('pUni').textContent = money(state.caixas.uniao);
+}
+function renderLog(){
+  $('logBox').innerHTML = state.logs.slice(-60).map(function(l){ return '<div class="log-entry '+l.k+'">'+l.h+'</div>'; }).join('');
+}
+
+/* ============================= MODAL ============================= */
+function showModal(html){ $('modalBody').innerHTML = html; $('overlay').hidden = false; }
+function closeModal(after){ $('overlay').hidden = true; renderAll(); if(after) after(); }
+function simpleModal(kicker, title, html, btnLabel, after){
+  showModal('<p class="kicker">'+kicker+'</p><h3>'+title+'</h3>'+html+'<div class="modal-actions"><button class="primary" id="okSimple">'+(btnLabel||'Continuar')+'</button></div>');
+  $('okSimple').onclick = function(){ closeModal(after); };
+}
+
+/* ============================= TURN FLOW ============================= */
+$('rollBtn').onclick = function(){
+  if(state.gameOver) return;
+  var p = curPlayer();
+  enableTurn(false);
+  ofertaQuitar(p, function(){ rolar(p); });
+};
+$('loanBtn').onclick = function(){
+  if(state.gameOver || !$('overlay').hidden) return;
+  var p = curPlayer();
+  enableTurn(false);
+  escolherEmprestimo(p, 0, function(ok){ renderAll(); enableTurn(true); });
+};
+
+function ofertaQuitar(p, next){
+  var d = p.dividas[0];
+  if(!d || p.dinheiro < dividaTotal(d)) return next();
+  showModal('<p class="kicker">Dívida Ativa</p><h3>'+d.titulo+'</h3>'+
+    '<p>Você tem '+money(p.dinheiro)+' e pode quitar agora: '+money(d.valor)+' + IOF de '+money(d.iof)+' (Caixa União) = <b>'+money(dividaTotal(d))+'</b>.</p>'+
+    '<div class="modal-actions"><button id="qDepois">Depois</button><button class="primary" id="qAgora">Quitar agora</button></div>');
+  $('qDepois').onclick = function(){ closeModal(next); };
+  $('qAgora').onclick = function(){ pagarDivida(p, d); closeModal(next); };
+}
+
+function rolar(p){
+  if(p.presoRodadas>0){
+    p.presoRodadas--;
+    log('<b>'+p.nome+'</b> está preso na Fiscalização. Rodadas restantes: '+p.presoRodadas+'.');
+    return endOfAction();
+  }
+  var die = $('dieFace'); die.classList.add('rolling');
+  var ticks = 0;
+  var spin = setInterval(function(){
+    die.textContent = 1+Math.floor(Math.random()*6);
+    if(++ticks>=12){
+      clearInterval(spin); die.classList.remove('rolling');
+      var roll = 1+Math.floor(Math.random()*6);
+      die.textContent = roll;
+      log('<b>'+p.nome+'</b> tirou '+roll+' no dado.');
+      moveToken(p, roll);
+    }
+  }, 85);
+}
+
+function moveToken(p, steps){
+  var i = 0;
+  (function step(){
+    var prevEl = $('sq'+p.pos); if(prevEl) prevEl.classList.remove('current-square');
+    if(i<steps){
+      p.pos = (p.pos+1) % N;
+      if(p.pos===0){ p.voltas++; p.voltasPend++; }
+      renderTokens();
+      var curEl = $('sq'+p.pos); if(curEl) curEl.classList.add('current-square');
+      i++; setTimeout(step, 480);
+    } else {
+      setTimeout(function(){ onLand(p); }, 300);
+    }
+  })();
+}
+
+function onLand(p){
+  var sq = BOARD[p.pos];
+  log('<b>'+p.nome+'</b> caiu em <b>'+squareLabel(sq)+'</b>.');
+  processarObrigacoes(p, function(){ resolveSquare(p, sq, function(){ endOfAction(); }); });
+}
+
+function endOfAction(){
+  var cur = $('sq'+curPlayer().pos); if(cur) cur.classList.remove('current-square');
+  if(state.gameOver){ renderAll(); return; }
+  if(state.pendingRollAgain){
+    state.pendingRollAgain = false;
+    log('<b>'+curPlayer().nome+'</b> joga o dado novamente.');
+  } else {
+    state.turn = (state.turn+1) % state.players.length;
+  }
+  renderAll(); enableTurn(true); push(true);
+}
+
+/* ============================= LAP OBLIGATIONS ============================= */
+function processarObrigacoes(p, done){
+  var laps = p.voltasPend; p.voltasPend = 0;
+  if(!laps) return done();
+  var linhas = [], fila = [];
+  for(var l=0;l<laps;l++){
+    p.imoveis.forEach(function(n){ fila.push({k:'municipio',v:imovelByName(n).iptu,label:'IPTU — '+n}); });
+    p.veiculos.forEach(function(n){ fila.push({k:'estado',v:veiculoByName(n).ipva,label:'IPVA — '+n}); });
+    fila.push({emp:true});
+  }
+  (function next(){
+    var it = fila.shift();
+    if(!it){
+      if(!linhas.length) return done();
+      return simpleModal('Volta completa — '+p.nome, 'Obrigações do Início',
+        '<div style="display:flex;flex-direction:column;gap:6px">'+linhas.map(function(t){ return '<div class="item-row">'+t+'</div>'; }).join('')+'</div>', 'Continuar', done);
+    }
+    if(it.emp){ if(p.emprestimo) cobrarEmprestimo(p, linhas); return next(); }
+    var iso = it.k==='municipio' ? 'iptu' : 'ipva';
+    var disp = it.skipIso ? [] : isencoesDisp(p, iso);
+    if(disp.length){
+      var btnsIso = disp.map(function(r){ return '<button class="opt-btn" data-iso="'+r.uid+'">🎟 Usar Recibo '+r.n+' — isenção de '+isoLabel(iso)+' (uso único)</button>'; }).join('');
+      showModal('<p class="kicker">Isenção disponível</p><h3>'+it.label+'</h3>'+
+        '<p><b>'+p.nome+'</b>, você deve '+money(it.v)+' de '+isoLabel(iso)+' à '+CAIXA_NOME[it.k]+' e tem recibo(s) com isenção desse imposto. Cada recibo só vale uma vez e só isenta '+isoLabel(iso)+'. Deseja usar?</p>'+
+        '<div style="display:flex;flex-direction:column;gap:8px">'+btnsIso+'</div>'+
+        '<div class="modal-actions"><button id="isoNao">Pagar normalmente</button></div>');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-iso]'), function(b){
+        b.onclick = function(){
+          var uid = +b.getAttribute('data-iso');
+          var r = p.recibos.filter(function(x){ return x.uid===uid; })[0];
+          r.usada = true;
+          linhas.push('🎟 '+it.label+': isento pelo Recibo '+r.n+' (não pagou '+money(it.v)+')');
+          log('🎟 <b>'+p.nome+'</b> usou a isenção do Recibo '+r.n+' e não pagou '+it.label+' ('+money(it.v)+').');
+          closeModal(next);
+        };
+      });
+      $('isoNao').onclick = function(){ fila.unshift({k:it.k,v:it.v,label:it.label,skipIso:true}); closeModal(next); };
+      return;
+    }
+    if(p.dinheiro>=it.v){ tentarTributo(p,it.k,it.v,it.label,linhas); return next(); }
+    var canLoan = !p.emprestimo && state.emprestimosDisp>0;
+    showModal('<p class="kicker">Sem dinheiro</p><h3>'+it.label+'</h3>'+
+      '<p><b>'+p.nome+'</b> precisa pagar '+money(it.v)+' à '+CAIXA_NOME[it.k]+' e tem '+money(p.dinheiro)+'. Pegue um empréstimo (o Banco cobre agora; IOF vai à Caixa União) ou aceite Dívida Ativa (IOF R$ '+DIVIDA_IOF+').</p>'+
+      '<div class="modal-actions"><button id="tDiv">Dívida Ativa</button><button class="primary" id="tEmp" '+(canLoan?'':'disabled')+'>Pegar empréstimo</button></div>');
+    $('tDiv').onclick = function(){ tentarTributo(p,it.k,it.v,it.label,linhas); closeModal(next); };
+    $('tEmp').onclick = function(){ escolherEmprestimo(p, it.v, function(ok){ tentarTributo(p,it.k,it.v,it.label,linhas); next(); }); };
+  })();
+}
+function tentarTributo(p, k, v, label, linhas){
+  if(p.dinheiro>=v){
+    pagarCaixa(p,k,v,true);
+    linhas.push('✔ '+label+': pagou '+money(v)+' → '+CAIXA_NOME[k]);
+    log('<b>'+p.nome+'</b> pagou '+money(v)+' de '+label+' → '+CAIXA_NOME[k]+'.');
+  } else if(p.dividas.length){
+    p.dividas[0].valor += v;
+    linhas.push('⚠ '+label+': sem dinheiro — somado à Dívida Ativa existente (+'+money(v)+')');
+    log('<b>'+p.nome+'</b> sem dinheiro para '+label+': valor somado à Dívida Ativa.','debt');
+  } else {
+    gerarDividaAtiva(p, k==='municipio'?'iptu':'ipva', v, k, null, label);
+    linhas.push('⚠ '+label+': sem dinheiro — virou Dívida Ativa (IOF R$ '+DIVIDA_IOF+')');
+  }
+}
+function cobrarEmprestimo(p, linhas){
+  var e = p.emprestimo, principal = e.valor + e.extra, devido = principal + e.iof;
+  if(p.dinheiro>=devido){
+    p.dinheiro -= devido; state.caixaBanco += principal; pagarCaixa(p,'uniao',e.iof,false);
+    state.emprestimosDisp++; p.emprestimo = null;
+    linhas.push('✔ Empréstimo quitado: '+money(principal)+' ao Banco + IOF '+money(e.iof)+' → Caixa União');
+    log('<b>'+p.nome+'</b> quitou o empréstimo: '+money(principal)+' ao Banco e IOF '+money(e.iof)+' à Caixa União.');
+  } else {
+    e.extra += 50;
+    linhas.push('⚠ Empréstimo não quitado (precisa de '+money(devido)+'): dívida +R$ 50');
+    log('<b>'+p.nome+'</b> não pôde quitar o empréstimo — a dívida aumenta +R$ 50.','debt');
+  }
+}
+
+/* ============================= LOANS & DEBTS ============================= */
+function escolherEmprestimo(p, minimo, cb){
+  if(p.emprestimo || state.emprestimosDisp<=0){ return cb(false); }
+  var btns = EMPRESTIMO_TIERS.map(function(t){
+    return '<button class="opt-btn" data-tier="'+t+'">Empréstimo de '+money(t)+' — devolver '+money(t)+' + IOF '+money(t/10)+' = '+money(t*1.1)+' no Início</button>';
+  }).join('');
+  showModal('<p class="kicker">Banco Central</p><h3>Empréstimo emergencial</h3>'+
+    '<p>O IOF vai para a Caixa União. Cada jogador só pode ter 1 empréstimo ativo. Se não conseguir pagar no Início, a dívida cresce +R$ 50 por volta. Cartas disponíveis: '+state.emprestimosDisp+'.</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+btns+'</div>'+
+    '<div class="modal-actions"><button id="empCancel">Voltar</button></div>');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tier]'), function(b){
+    b.onclick = function(){ tomarEmprestimo(p, +b.getAttribute('data-tier')); closeModal(function(){ cb(true); }); };
+  });
+  $('empCancel').onclick = function(){ closeModal(function(){ cb(false); }); };
+}
+function tomarEmprestimo(p, tier){
+  p.emprestimo = {valor:tier, iof:tier/10, extra:0};
+  p.dinheiro += tier; state.caixaBanco -= tier; state.emprestimosDisp--;
+  log('<b>'+p.nome+'</b> pegou um empréstimo de '+money(tier)+' com o Banco (IOF '+money(tier/10)+' a pagar no Início).','debt');
+}
+function gerarDividaAtiva(p, id, valor, caixa, credor, ref){
+  var titulos = {iptu:"IPTU em Atraso — Dívida com o Município", ipva:"IPVA em Atraso — Dívida com o Estado", aluguel:"Aluguel Não Pago — Endividamento"};
+  var d = {id:id, titulo:titulos[id], categoria:id==='aluguel'?'aluguel':'imposto', valor:valor, iof:DIVIDA_IOF, caixa:caixa, credor:credor, ref:ref};
+  p.dividas.push(d);
+  log('<b>'+p.nome+'</b> recebeu carta de <b>Dívida Ativa</b>: '+titulos[id]+' ('+money(valor)+' + IOF '+money(DIVIDA_IOF)+').','debt');
+  return d;
+}
+function destinoPrincipal(p, d, fromCash){
+  if(d.caixa){ pagarCaixa(p, d.caixa, d.valor, false); }
+  else if(d.credor){ d.credor.dinheiro += d.valor; }
+}
+/* Pays a debt with money: principal to its caixa/creditor, IOF to Caixa União. */
+function pagarDivida(p, d){
+  p.dinheiro -= dividaTotal(d);
+  destinoPrincipal(p, d);
+  pagarCaixa(p,'uniao',d.iof,false);
+  p.dividas.splice(p.dividas.indexOf(d),1);
+  log('<b>'+p.nome+'</b> quitou a Dívida Ativa ('+d.titulo+') pagando '+money(dividaTotal(d))+'; IOF de '+money(d.iof)+' → Caixa União.');
+}
+/* Settles a debt by handing over a card. The card's value covers the debt. */
+function confiscarBem(p, d, bem){
+  var i = p.imoveis.indexOf(bem), ehImovel = i!==-1;
+  if(ehImovel) p.imoveis.splice(i,1); else p.veiculos.splice(p.veiculos.indexOf(bem),1);
+  var data = ehImovel ? imovelByName(bem) : veiculoByName(bem);
+  if(ehImovel) delete state.aluguelExtra[bem];
+  var paraCredor = d.categoria==='aluguel' && d.credor;
+  if(paraCredor){ (ehImovel?d.credor.imoveis:d.credor.veiculos).push(bem); }
+  else { state.caixaBanco += 0; }
+  destinoPrincipal(p, d); pagarCaixa(p,'uniao',d.iof,false);
+  p.dividas.splice(p.dividas.indexOf(d),1);
+  log('<b>'+p.nome+'</b> entregou <b>'+bem+'</b> (valor '+money(venda(data))+') '+(paraCredor?'a <b>'+d.credor.nome+'</b>':'ao Banco')+' e quitou a Dívida Ativa; IOF de '+money(d.iof)+' → Caixa União.','debt');
+}
+function menorTier(v){ for(var i=0;i<EMPRESTIMO_TIERS.length;i++){ if(EMPRESTIMO_TIERS[i]>=v) return EMPRESTIMO_TIERS[i]; } return EMPRESTIMO_TIERS[EMPRESTIMO_TIERS.length-1]; }
+
+/* ============================= SQUARES ============================= */
+function resolveSquare(p, sq, done){
+  switch(sq.t){
+    case 'inicio': return done();
+    case 'imovel': return resolveImovel(p, sq.data, done);
+    case 'veiculo': return resolveVeiculo(p, sq.data, done);
+    case 'escola': return resolveServico(p, 'municipio', 50, 'Escola Municipal', done);
+    case 'hospital': return resolveServico(p, 'estado', 30, 'Hospital Estadual', done);
+    case 'praca':
+      state.pendingRollAgain = true;
+      log('Praça: <b>'+p.nome+'</b> joga o dado novamente.');
+      return simpleModal('Praça','Espaço público mantido por todos','<p>'+p.nome+' joga o dado novamente.</p>','Jogar de novo', done);
+    case 'descanso':
+      log('Casa de descanso: nada acontece.');
+      return simpleModal('Descanso','Casa de descanso','<p>Nada acontece aqui. Aproveite para planejar sua jogada.</p>','Continuar', done);
+    case 'prefeitura': return resolvePrefeitura(p, done);
+    case 'pergunta': return resolvePergunta(p, done);
+    case 'recibo': return resolveRecibo(p, done);
+    case 'sorte': return resolveCarta(p, 'sorte', done);
+    case 'reves': return resolveCarta(p, 'reves', done);
+    case 'fiscalizacao': return resolveFiscalizacao(p, done);
+    default: return done();
+  }
+}
+
+function comprar(p, tipo, data, extraLog){
+  p.dinheiro -= data.compra; state.caixaBanco += data.compra;
+  (tipo==='imovel'?p.imoveis:p.veiculos).push(data.nome);
+  log('<b>'+p.nome+'</b> comprou <b>'+data.nome+'</b> por '+money(data.compra)+'.'+(extraLog||''));
+}
+
+function resolveImovel(p, data, done){
+  var dono = ownerOf('imoveis', data.nome);
+  if(!dono){
+    showModal('<p class="kicker">Propriedade Urbana</p><h3>'+data.nome+'</h3>'+
+      '<div class="info-card">'+infoRow('Preço',money(data.compra))+infoRow('Aluguel',money(data.aluguel))+infoRow('IPTU (por volta)',money(data.iptu))+infoRow('Preço de venda',money(venda(data)))+'</div>'+
+      '<div class="modal-actions"><button id="skipBuy">Não comprar</button><button class="primary" id="doBuy" '+(p.dinheiro<data.compra?'disabled':'')+'>Comprar por '+money(data.compra)+'</button></div>');
+    $('skipBuy').onclick = function(){ closeModal(done); };
+    $('doBuy').onclick = function(){ comprar(p,'imovel',data); closeModal(done); };
+  } else if(dono===p){
+    var raised = state.aluguelExtra[data.nome];
+    if(p.voltas>=2 && !raised){
+      showModal('<p class="kicker">Sua propriedade</p><h3>'+data.nome+'</h3>'+
+        '<p>Você já completou '+p.voltas+' voltas e pode aumentar o aluguel em <b>R$ 50</b>: de '+money(aluguelAtual(data))+' para '+money(aluguelAtual(data)+50)+'.</p>'+
+        '<div class="modal-actions"><button id="noRaise">Manter</button><button class="primary" id="doRaise">Aumentar aluguel +R$ 50</button></div>');
+      $('noRaise').onclick = function(){ closeModal(done); };
+      $('doRaise').onclick = function(){ state.aluguelExtra[data.nome] = 50; log('<b>'+p.nome+'</b> aumentou o aluguel de <b>'+data.nome+'</b> para '+money(aluguelAtual(data))+'.'); closeModal(done); };
+    } else {
+      simpleModal('Sua propriedade', data.nome, '<p>'+(raised?'O aluguel já foi aumentado ('+money(aluguelAtual(data))+').':'Depois da 2ª volta completa (você está na volta '+p.voltas+'), você poderá aumentar o aluguel em R$ 50 ao cair aqui.')+'</p>', 'Continuar', done);
+    }
+  } else {
+    pagarAluguel(p, dono, aluguelAtual(data), data.nome, done);
+  }
+}
+
+function resolveVeiculo(p, data, done){
+  var dono = ownerOf('veiculos', data.nome);
+  if(!dono){
+    showModal('<p class="kicker">Veículo</p><h3>'+data.nome+'</h3>'+
+      '<div class="info-card">'+infoRow('Preço',money(data.compra))+infoRow('IPVA (por volta)',money(data.ipva))+infoRow('Benefício','+'+data.beneficio+' casas ao comprar')+infoRow('Preço de venda',money(venda(data)))+'</div>'+
+      '<div class="modal-actions"><button id="skipBuy">Não comprar</button><button class="primary" id="doBuy" '+(p.dinheiro<data.compra?'disabled':'')+'>Comprar por '+money(data.compra)+'</button></div>');
+    $('skipBuy').onclick = function(){ closeModal(done); };
+    $('doBuy').onclick = function(){
+      comprar(p,'veiculo',data,' Avança '+data.beneficio+' casas.');
+      closeModal(function(){ moveToken(p, data.beneficio); });
+    };
+  } else if(dono===p){
+    state.pendingRollAgain = true;
+    log('<b>'+p.nome+'</b> parou em seu veículo e joga o dado novamente.');
+    simpleModal('Seu veículo', data.nome, '<p>Quem possui veículo joga o dado novamente.</p>', 'Jogar de novo', done);
+  } else {
+    simpleModal('Veículo', data.nome, '<p>Este veículo pertence a '+dono.nome+'. Nada a pagar.</p>', 'Continuar', done);
+  }
+}
+
+function pagarAluguel(p, dono, valor, nomeImovel, done){
+  function pagar(){
+    p.dinheiro -= valor; dono.dinheiro += valor;
+    log('💸 <b>'+p.nome+'</b> pagou '+money(valor)+' de aluguel a <b>'+dono.nome+'</b> ('+nomeImovel+').','rent');
+    simpleModal('Aluguel', nomeImovel+' pertence a '+dono.nome,
+      '<p><b>'+p.nome+'</b> pagou <span class="badge-money neg">'+money(valor)+'</span> de aluguel a <b>'+dono.nome+'</b>.</p>','Continuar', done);
+  }
+  if(p.dinheiro>=valor) return pagar();
+  var canLoan = !p.emprestimo && state.emprestimosDisp>0;
+  var canDebt = p.dividas.length===0;
+  var html = '<p class="kicker">Aluguel</p><h3>'+nomeImovel+' pertence a '+dono.nome+'</h3>'+
+    '<p>O aluguel é de <b>'+money(valor)+'</b> e você tem '+money(p.dinheiro)+'. Como resolver?</p>'+
+    '<div class="modal-actions" style="flex-direction:column;align-items:stretch">'+
+    (canLoan?'<button class="opt-btn" id="aLoan">Pedir empréstimo ao Banco e pagar agora</button>':'')+
+    (canDebt?'<button class="opt-btn" id="aDebt">Ficar com Dívida Ativa de aluguel (IOF R$ '+DIVIDA_IOF+')</button>':'')+
+    (!canLoan&&!canDebt?'<button class="opt-btn" id="aAll">Pagar tudo o que tem ('+money(p.dinheiro)+')</button>':'')+'</div>';
+  showModal(html);
+  if(canLoan) $('aLoan').onclick = function(){ escolherEmprestimo(p, valor, function(ok){ if(ok && p.dinheiro>=valor) pagar(); else pagarAluguel(p,dono,valor,nomeImovel,done); }); };
+  if(canDebt) $('aDebt').onclick = function(){ gerarDividaAtiva(p,'aluguel',valor,null,dono,nomeImovel); closeModal(done); };
+  if(!canLoan&&!canDebt) $('aAll').onclick = function(){ var v=p.dinheiro; p.dinheiro=0; dono.dinheiro+=v;
+    log('💸 <b>'+p.nome+'</b> pagou '+money(v)+' (tudo o que tinha) de aluguel a <b>'+dono.nome+'</b>.','rent'); closeModal(done); };
+}
+
+function resolveServico(p, caixaKey, valor, nome, done){
+  var pago = Math.min(valor, state.caixas[caixaKey]), html;
+  if(pago>0){
+    state.caixas[caixaKey] -= pago; p.dinheiro += pago;
+    log(nome+': <b>'+p.nome+'</b> recebeu '+money(pago)+' — saiu da '+CAIXA_NOME[caixaKey]+' (agora '+money(state.caixas[caixaKey])+').');
+    html = '<p>'+p.nome+' recebeu <span class="badge-money pos">'+money(pago)+'</span>, que saiu da '+CAIXA_NOME[caixaKey]+' (impostos arrecadados).</p>';
+  } else {
+    log(nome+': a '+CAIXA_NOME[caixaKey]+' está vazia, nada a receber.');
+    html = '<p>A '+CAIXA_NOME[caixaKey]+' está vazia agora — nada a receber desta vez.</p>';
+  }
+  simpleModal('Serviço Público', nome, html, 'Continuar', done);
+}
+
+var BONUS_PREFEITURA = 50;
+function resolvePrefeitura(p, done){
+  var linhas = [];
+  p.dinheiro += BONUS_PREFEITURA; state.caixaBanco -= BONUS_PREFEITURA;
+  log('🏛 <b>'+p.nome+'</b> caiu na Prefeitura e recebeu bônus de '+money(BONUS_PREFEITURA)+' do Banco.','rent');
+  state.players.forEach(function(o){
+    if(o===p) return;
+    var d = o.dividas.filter(function(x){return x.categoria==='imposto';})[0];
+    if(!d) return;
+    var total = dividaTotal(d);
+    if(o.dinheiro<total && !o.emprestimo && state.emprestimosDisp>0){
+      var t = menorTier(total); tomarEmprestimo(o, t);
+      linhas.push(o.nome+' pediu empréstimo de '+money(t)+' ao Banco para quitar.');
+    }
+    if(o.dinheiro>=total){
+      o.dinheiro -= total; p.dinheiro += d.valor; pagarCaixa(o,'uniao',d.iof,false);
+      o.dividas.splice(o.dividas.indexOf(d),1);
+      linhas.push('<b>'+o.nome+'</b> pagou '+money(d.valor)+' de multa ao fiscal <b>'+p.nome+'</b> + IOF '+money(d.iof)+' (Caixa União).');
+      log('🏛 <b>'+o.nome+'</b> pagou '+money(d.valor)+' de multa de Dívida Ativa ao fiscal <b>'+p.nome+'</b>.','rent');
+    } else linhas.push(o.nome+' não tem como pagar a Dívida Ativa agora.');
+  });
+  simpleModal('Prefeitura', p.nome+' vira fiscal',
+    '<div class="gabarito-box show"><b style="color:var(--good)">🎁 Bônus da Prefeitura: +'+money(BONUS_PREFEITURA)+' do Banco!</b></div><p>Fiscaliza as dívidas ativas de impostos dos outros jogadores.</p><div class="gabarito-box show">'+(linhas.length?linhas.join('<br>'):'Nenhum outro jogador tinha Dívida Ativa de imposto.')+'</div>', 'Continuar', done);
+}
+
+function resolvePergunta(p, done){
+  if(!state.perguntas.length) return endGame();
+  var q = state.perguntas.pop();
+  showModal('<p class="kicker">Casa de Pergunta · nível '+q.nivel+' · prêmio '+money(q.premio)+'</p>'+
+    '<h3>'+q.q+'</h3>'+
+    '<button type="button" class="mini-btn" id="qVerRec" style="flex:none;align-self:flex-start">📜 Ver meus recibos ('+p.recibos.length+')</button>'+
+    '<div id="qRecBox" style="display:none;flex-direction:column;gap:8px;max-height:30vh;overflow-y:auto"></div>'+
+    '<div id="qOpts" style="display:flex;flex-direction:column;gap:8px"></div>'+
+    '<div class="gabarito-box" id="gabBox"></div>'+
+    '<div class="modal-actions" id="qActions" style="display:none"><button class="primary" id="qContinue">Continuar</button></div>');
+  var recBox = $('qRecBox');
+  recBox.innerHTML = p.recibos.length ? p.recibos.map(reciboRow).join('') : '<p class="empty-note">Você ainda não tem recibos. Caia nas casas de Recibo para coletar!</p>';
+  $('qVerRec').onclick = function(){
+    var aberto = recBox.style.display === 'flex';
+    recBox.style.display = aberto ? 'none' : 'flex';
+    $('qVerRec').textContent = aberto ? '📜 Ver meus recibos ('+p.recibos.length+')' : '📜 Esconder meus recibos';
+  };
+  var optsBox = $('qOpts');
+  q.op.forEach(function(opt, idx){
+    var b = document.createElement('button'); b.className = 'opt-btn'; b.textContent = opt;
+    b.onclick = function(){
+      Array.prototype.forEach.call(optsBox.children, function(c){ c.disabled = true; });
+      var correct = idx===q.c;
+      var pesoNivel = q.nivel==='difícil' ? 2 : (q.nivel==='médio' ? 1.5 : 1);
+      p.perguntasRespondidas = (p.perguntasRespondidas||0) + 1;
+      p.pesoPerguntas = (p.pesoPerguntas||0) + pesoNivel;
+      if(correct){ p.perguntasCertas = (p.perguntasCertas||0) + 1; p.pesoAcertos = (p.pesoAcertos||0) + pesoNivel; }
+      b.classList.add(correct?'correct':'wrong');
+      if(!correct) optsBox.children[q.c].classList.add('correct');
+      var gab = $('gabBox'); gab.className = 'gabarito-box show';
+      if(correct){
+        p.dinheiro += q.premio; state.caixaBanco -= q.premio;
+        gab.innerHTML = '<b style="color:var(--good)">Correto! +'+money(q.premio)+' do Banco.</b><br>'+q.exp;
+        log('<b>'+p.nome+'</b> acertou a pergunta e ganhou '+money(q.premio)+'.');
+      } else {
+        gab.innerHTML = '<b style="color:var(--bad)">Não foi dessa vez.</b><br>'+q.exp;
+        log('<b>'+p.nome+'</b> errou a pergunta — sem prêmio.');
+      }
+      $('qActions').style.display = 'flex';
+      $('qContinue').onclick = function(){ closeModal(function(){ if(!state.perguntas.length){ endGame(); } else { done(); } }); };
+    };
+    optsBox.appendChild(b);
+  });
+}
+
+function resolveRecibo(p, done){
+  if(!state.recibosDeck.length) state.recibosDeck = shuffled(RECIBOS);
+  var r = novoRecibo(state.recibosDeck.pop());
+  p.recibos.push(r);
+  log('<b>'+p.nome+'</b> pegou o Recibo '+r.n+' (isenção de '+isoLabel(r.iso)+').');
+  simpleModal('Carta de Recibo','Recibo '+r.n+': '+r.titulo,
+    '<p>'+r.txt+' <span style="color:var(--muted);font-size:12px">(Base legal: '+r.base+')</span></p>'+
+    '<div class="gabarito-box show"><b>🎟 Isenção de '+isoLabel(r.iso)+'</b><br>Este recibo vale <b>uma isenção de '+isoLabel(r.iso)+'</b> (somente '+isoLabel(r.iso)+'), de <b>uso único</b>: na próxima cobrança desse imposto você poderá usá-lo para não pagar aquela cobrança.</div>'+
+    '<p style="font-size:12px">Guardado nos seus recibos — consulte pelo botão "Recibos" do seu card ou durante uma Pergunta.</p>','Guardar recibo', done);
+}
+
+function resolveCarta(p, tipo, done){
+  var isSorte = tipo==='sorte';
+  var pool = (isSorte?SORTE:REVES).filter(function(c){
+    var r = c.req; return !r || (r==='imovel' && p.imoveis.length) || (r==='veiculo' && p.veiculos.length);
+  });
+  if(!pool.length){
+    log('<b>'+p.nome+'</b> caiu em Revés, mas não tem bens para sofrer o imprevisto.');
+    return simpleModal('Revés','Imprevisto evitado','<p>'+p.nome+' ainda não tem imóvel nem veículo para sofrer um revés. Nada acontece.</p>','Continuar', done);
+  }
+  var c = pool[Math.floor(Math.random()*pool.length)], efeito;
+  if(isSorte){
+    p.dinheiro += c.valor; state.caixaBanco -= c.valor;
+    efeito = '<span class="badge-money pos">+'+money(c.valor)+' do Banco</span>' + (c.avancar?(' · avança '+c.avancar+' casa(s)'):'');
+  } else {
+    var pago = Math.min(c.valor, p.dinheiro);
+    pagarCaixa(p, c.caixa, pago, true);
+    efeito = '<span class="badge-money neg">-'+money(pago)+'</span> para a '+CAIXA_NOME[c.caixa];
+  }
+  log('<b>'+p.nome+'</b> tirou carta de '+(isSorte?'Sorte':'Revés')+': '+c.titulo+'.');
+  showModal('<p class="kicker">'+(isSorte?'Sorte':'Revés')+'</p><h3>'+c.titulo+'</h3><p>'+c.texto+'</p>'+
+    '<div class="gabarito-box show"><b>Lição:</b> '+c.licao+'<br><br>'+efeito+'</div>'+
+    '<div class="modal-actions"><button class="primary" id="okSR">Continuar</button></div>');
+  $('okSR').onclick = function(){ closeModal(function(){ if(isSorte && c.avancar){ moveToken(p, c.avancar); } else { done(); } }); };
+}
+
+function resolveFiscalizacao(p, done){
+  showModal('<p class="kicker">Fiscalização</p><h3>'+p.nome+' foi fiscalizado</h3>'+
+    '<p>Pague uma multa de R$ 50 ou fique preso por 3 rodadas completas sem jogar os dados.</p>'+
+    '<div class="modal-actions"><button id="presoBtn">Ficar preso 3 rodadas</button>'+
+    '<button class="primary" id="multaBtn" '+(p.dinheiro>=50?'':'disabled')+'>Pagar multa de R$ 50</button></div>');
+  function next(){ closeModal(function(){ confisco(p, done); }); }
+  $('presoBtn').onclick = function(){ p.presoRodadas = 3; log('<b>'+p.nome+'</b> ficou preso na Fiscalização por 3 rodadas.'); next(); };
+  $('multaBtn').onclick = function(){ p.dinheiro -= 50; state.caixaBanco += 50; log('<b>'+p.nome+'</b> pagou multa de R$ 50 na Fiscalização.'); next(); };
+}
+
+/* Confisco de Propriedade: with a Dívida Ativa the player hands a property/vehicle card (its value settles the debt) or takes a loan. */
+function confisco(p, done){
+  var d = p.dividas[0];
+  if(!d) return done();
+  var bens = p.imoveis.concat(p.veiculos);
+  var t = menorTier(dividaTotal(d));
+  var podeEmp = !p.emprestimo && state.emprestimosDisp>0;
+  var opts = bens.map(function(b,i){
+    var dt = imovelByName(b) || veiculoByName(b);
+    return '<button class="opt-btn" data-bem="'+i+'">Entregar <b>'+b+'</b> (valor '+money(venda(dt))+')'+(d.categoria==='aluguel'&&d.credor?' a '+d.credor.nome:' ao Banco')+'</button>';
+  }).join('');
+  if(podeEmp) opts += '<button class="opt-btn" id="empBtn">Contrair empréstimo de '+money(t)+' (Banco quita a dívida agora)</button>';
+  if(!opts) opts = '<p class="empty-note">Você não tem bens nem empréstimo disponível — a dívida continua.</p>';
+  showModal('<p class="kicker">Confisco de Propriedade</p><h3>'+d.titulo+'</h3>'+
+    '<p>Dívida de '+money(d.valor)+' + IOF '+money(d.iof)+' = <b>'+money(dividaTotal(d))+'</b>. Entregue uma carta de propriedade ou veículo (o valor da casa quita a dívida) ou use o empréstimo emergencial.</p>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+opts+'</div>'+
+    '<div class="modal-actions"><button id="confSkip">'+(bens.length||podeEmp?'Decidir depois':'Continuar')+'</button></div>');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-bem]'), function(btn){
+    btn.onclick = function(){ confiscarBem(p, d, bens[+btn.getAttribute('data-bem')]); closeModal(function(){ confisco(p, done); }); };
+  });
+  if(podeEmp) $('empBtn').onclick = function(){ tomarEmprestimo(p, t); pagarDivida(p, d); closeModal(function(){ confisco(p, done); }); };
+  $('confSkip').onclick = function(){ closeModal(done); };
+}
+
+/* ============================= END GAME ============================= */
+function endGame(){
+  closeModal(function(){
+    state.gameOver = true;
+
+    // Calcula os indicadores financeiros e tributários de cada jogador.
+    var dados = state.players.map(function(p){
+      var ativos = p.imoveis.reduce(function(s,n){ var d=imovelByName(n); return s + (d ? d.compra : 0); },0)
+                 + p.veiculos.reduce(function(s,n){ var d=veiculoByName(n); return s + (d ? d.compra : 0); },0);
+      var dividasAtivas = p.dividas.reduce(function(s,d){ return s + dividaTotal(d); },0);
+      var emprestimoAtivo = p.emprestimo ? (p.emprestimo.valor + (p.emprestimo.extra||0) + p.emprestimo.iof) : 0;
+      var obrigacoes = dividasAtivas + emprestimoAtivo;
+      var patrimonio = p.dinheiro + ativos - obrigacoes;
+
+      // Saúde financeira: metade mede endividamento; metade, capacidade de pagar agora.
+      var baseFinanceira = Math.max(0, p.dinheiro + ativos + obrigacoes);
+      var indiceEndividamento = baseFinanceira > 0 ? (obrigacoes / baseFinanceira) : 0;
+      var pontosDivida = 12.5 * (1 - Math.min(1, indiceEndividamento));
+      var pontosLiquidez = obrigacoes <= 0 ? 12.5 : 12.5 * Math.min(1, p.dinheiro / obrigacoes);
+
+      // Conhecimento: fácil=1, médio=1,5, difícil=2. Suavização equivalente
+      // a 3 questões hipotéticas com 50% de acerto, para não premiar 1 único acerto como 100%.
+      var pesoTentado = p.pesoPerguntas || 0;
+      var pesoCerto = p.pesoAcertos || 0;
+      var pontosTributarios = 25 * ((pesoCerto + 1.5) / (pesoTentado + 3));
+      pontosTributarios = Math.max(0, Math.min(25, pontosTributarios));
+
+      return {p:p, ativos:ativos, obrigacoes:obrigacoes, patrimonio:patrimonio,
+        pontosDivida:pontosDivida, pontosLiquidez:pontosLiquidez,
+        pontosSaude:pontosDivida+pontosLiquidez, pontosTributarios:pontosTributarios};
+    });
+
+    // Pontuação patrimonial relativa à faixa de patrimônio dos participantes.
+    var valores = dados.map(function(r){ return r.patrimonio; });
+    var menor = Math.min.apply(null, valores), maior = Math.max.apply(null, valores);
+    dados.forEach(function(r){
+      r.pontosPatrimonio = maior===menor ? 50 : 50 * (r.patrimonio-menor)/(maior-menor);
+      r.total = r.pontosPatrimonio + r.pontosSaude + r.pontosTributarios;
+    });
+    dados.sort(function(a,b){ return b.total-a.total || b.patrimonio-a.patrimonio; });
+
+    var rows = dados.map(function(r,i){
+      var p = r.p;
+      return '<div class="endgame-row'+(i===0?' winner':'')+'"><div style="width:100%">'+
+        '<b>'+(i+1)+'º — '+p.nome+(i===0?' 🏆':'')+'</b>'+        '<div style="font-size:22px;font-weight:900;margin:5px 0">'+r.total.toFixed(1).replace('.',',')+' / 100 pontos</div>'+        '<span style="color:var(--muted);font-size:13px">Patrimônio líquido: '+money(r.patrimonio)+'<br>'+        'Patrimônio: '+r.pontosPatrimonio.toFixed(1).replace('.',',')+'/50 · Saúde financeira: '+r.pontosSaude.toFixed(1).replace('.',',')+'/25 · Conhecimento tributário: '+r.pontosTributarios.toFixed(1).replace('.',',')+'/25<br>'+        'Obrigações em aberto: '+money(r.obrigacoes)+' · Perguntas respondidas: '+(p.perguntasRespondidas||0)+' ('+(p.perguntasCertas||0)+' certas)<br>'+        'Impostos pagos: Município '+money(p.pagou.municipio)+' · Estado '+money(p.pagou.estado)+' · União '+money(p.pagou.uniao)+'</span></div></div>';
+    }).join('');
+
+    showModal('<p class="kicker">Fim de jogo · classificação por desempenho</p><h3>Resultado final</h3>'+      '<p><b>Como a pontuação foi calculada:</b><br>'+      '• Patrimônio (50): dinheiro + valor de compra dos bens − dívidas e empréstimos em aberto. A nota é proporcional à faixa de patrimônio dos participantes.<br>'+      '• Saúde financeira (25): 12,5 pontos pela proporção de obrigações sobre os recursos totais; 12,5 pela capacidade do dinheiro disponível de quitar as obrigações atuais.<br>'+      '• Conhecimento tributário (25): acertos ponderados por dificuldade (fácil 1, médio 1,5, difícil 2). A fórmula considera uma base inicial equivalente a 3 questões com 50% de acerto, reduzindo distorções quando alguém responde poucas perguntas.</p>'+      '<div style="display:flex;flex-direction:column;gap:8px">'+rows+'</div>'+      '<div class="modal-actions"><button class="primary" id="closeEnd">Fechar</button></div>');
+    $('closeEnd').onclick = function(){ $('overlay').hidden = true; };
+    renderAll(); enableTurn(false);
+  });
+}
+
+})();
+</script>
+
+</body></html>
